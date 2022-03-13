@@ -16,7 +16,7 @@
 
 #include "mapping.h"
 #include "ripple.h"
-//#include "HTTP_Server.h"
+#include "HTTP_Server.h"
 
 
 const char* ssid = "TP-Link-150";
@@ -27,17 +27,20 @@ const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should req
 const IPAddress gateway(192, 168, 0, 1);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
 
-//WiFiServer server(80); //Open port number 80 (HTTP)
+WiFiServer server(80); //Open port number 80 (HTTP)
+
+int lengths[NUMBER_OF_STRIPS] = {22, 22}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
-Adafruit_NeoPixel strip0(11, 15,  NEO_GRB + NEO_KHZ800);
-extern byte ledColors[1][11][3];
+Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
 
-float decay = 0.998;  // Multiply all LED's by this amount each tick to create fancy fading tails
+float decay = 0.972;  // Multiply all LED's by this amount each tick to create fancy fading tails
 
 // These ripples are endlessly reused so we don't need to do any memory management
-#define numberOfRipples 1
-Ripple ripples[numberOfRipples] = {
+#define NUMBER_OF_RIPPLES 1
+Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(0),
 };
 
@@ -47,9 +50,11 @@ void setup() {
 
   Serial.println("*** LET'S GOOOOO ***");
 
-  strip0.begin();
-  strip0.setBrightness(125);  // If your PSU sucks, use this to limit the current
-  strip0.show();
+  for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
+    strips[i].begin();
+    //    strips[i].setBrightness(125);  // If your PSU sucks, use this to limit the current
+    strips[i].show();
+  }
 
 
   WiFi.mode(WIFI_STA);
@@ -57,14 +62,14 @@ void setup() {
   WiFi.config(ip, gateway, subnet);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
-    delay(5000);
+    delay(50000);
     ESP.restart();
   }
 
   Serial.print("WiFi connected! IP = ");
   Serial.println(WiFi.localIP());
   
-  //server.begin();
+  server.begin();
 
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
@@ -101,56 +106,102 @@ void setup() {
   
 }
 
-void FireRipple(){
+void FireRipple(void){
   int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
   ripples[0].start(
     0, //starting node
-    4, //direction
+    random(2) ? 1 : 5, //direction
     strip0.ColorHSV(hue, 255, 255),
     float(random(100)) / 100.0 * .2 + .8, //speed
-    1000, //lifespan
-    2 //behavior
+    60000, //lifespan
+    3, //behavior, 3 = always turn right
+    hue
   );
 }
 
 int loopCounter = 0;
+extern int loopFireRippleEnabled;
+extern int manualFireRipple;
 
 void loop(){
+  //unsigned long benchmark = millis();
+  
   if(loopCounter == 270){
     loopCounter = 0;
-    if(ripples[0].state == dead){
+    if(ripples[0].state == dead && loopFireRippleEnabled){
       FireRipple();
     }
   }
   loopCounter++;
+
+  if(manualFireRipple && ripples[0].state == dead){
+    manualFireRipple = 0;
+    FireRipple();
+  }
   
   OscWiFi.parse();
   ArduinoOTA.handle();						// Handle OTA updates
 
-  /*
+  
   WiFiClient client = server.available();   // Listen for incoming clients
   if (client) {                             // If a new client connects,
     Serial.println("New Client. Handling HTTP request");
-    //HandleHTTPRequest(client);
+    HandleHTTPRequest(client);
   }
-  */
+  
   // Fade all dots to create trails
-  for (int led = 0; led < 11; led++) {
-    for (int i = 0; i < 3; i++) {
-        ledColors[0][led][i] *= decay;
+  
+  for (int strip = 0; strip < NUMBER_OF_SEGMENTS ; strip++){
+    for (int led = 0; led < 11; led++) {
+       ledHues[strip][led][1] *= decay; //fade brightness
+      /*for (int i = 0; i < 3; i++) {
+          ledColors[strip][led][i] *= decay;
+      }*/
     }
+  }
+
+  for (int rip = 0; rip < NUMBER_OF_RIPPLES ; rip++){
+    ripples[rip].hue += 50; //rainbow effect
   }
   
   //SetPixelColor all leds to ledColors
-  for (int led = 0; led < 11; led++) {
-    strip0.setPixelColor(led, ledColors[0][led][0], ledColors[0][led][1], ledColors[0][led][2]);
+  for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
+    for (int fromBottom = 0; fromBottom < 11; fromBottom++) {
+      int strip = ledAssignments[segment][0];
+      int led = round(fmap(
+                        fromBottom,
+                        0, 10,
+                        ledAssignments[segment][2], ledAssignments[segment][1]));
+      /*
+      Serial.println("--TESTING LEDCOLORS ASSIGNMENT--");
+      Serial.print("strip: ");
+      Serial.println(strip);
+      Serial.print("segment: ");
+      Serial.println(segment);
+      Serial.print("fromBottom: ");
+      Serial.println(fromBottom);
+      Serial.print("ledAssignments[segment][2]: ");
+      Serial.println(ledAssignments[segment][1]);
+      Serial.print("ledAssignments[segment][1]: ");
+      Serial.println(ledAssignments[segment][1]);
+      Serial.print("led: ");
+      Serial.println(led);
+      */
+      //strips[strip].setPixelColor(led, ledColors[segment][fromBottom][0], ledColors[segment][fromBottom][1], ledColors[segment][fromBottom][2]);
+      unsigned long color = strips[strip].ColorHSV(ledHues[segment][fromBottom][0], 255, ledHues[segment][fromBottom][1]);
+      strips[strip].setPixelColor(led, color);
+    }
   }
 
-  for (int i = 0; i < numberOfRipples; i++) {
-    ripples[i].advance(ledColors);
+  for (int i = 0; i < NUMBER_OF_RIPPLES; i++) {
+    ripples[i].advance(ledHues);
   }
 
-  delay(10);
-  strip0.show();
+  //delay(10);
+  for (int strip = 0; strip < NUMBER_OF_STRIPS ; strip++){
+    strips[strip].show();
+  }
+  //Serial.print("Time between strip.show(): ");
+  //Serial.println(millis() - benchmark);
 
 }
