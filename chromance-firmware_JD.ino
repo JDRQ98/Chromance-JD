@@ -18,30 +18,47 @@
 #include "ripple.h"
 #include "HTTP_Server.h"
 
+#define NUMBER_OF_DIRECTIONS 3
 
+int directions[NUMBER_OF_DIRECTIONS] = {3,5,1};
+extern int loopFireRippleEnabled;
+extern int manualFireRipple;
+
+
+// WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
 const char* ssid = "TP-Link-150";
 const char* password = "Cenote#150";
 
-// WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
 const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should request
 const IPAddress gateway(192, 168, 0, 1);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
 
 WiFiServer server(80); //Open port number 80 (HTTP)
 
-int lengths[NUMBER_OF_STRIPS] = {22, 22}; 
+
+
+int lengths[NUMBER_OF_STRIPS] = {99}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
 Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
+Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0};
 
-float decay = 0.972;  // Multiply all LED's by this amount each tick to create fancy fading tails
+
+
+float decay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
 // These ripples are endlessly reused so we don't need to do any memory management
-#define NUMBER_OF_RIPPLES 1
+#define NUMBER_OF_RIPPLES 9
 Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(0),
+  Ripple(1),
+  Ripple(2),
+  Ripple(3),
+  Ripple(4),
+  Ripple(5),
+  Ripple(6),
+  Ripple(7),
+  Ripple(8)
 };
 
 
@@ -106,37 +123,59 @@ void setup() {
   
 }
 
-void FireRipple(void){
-  int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
-  ripples[0].start(
-    0, //starting node
-    random(2) ? 1 : 5, //direction
+void FireRipple(int ripple, int dir, int col){
+  //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
+  int hue = fmap(col, 0, 7, 0, 0xFFFF);
+  ripples[ripple].start(
+    3, //starting node
+    dir, //direction
     strip0.ColorHSV(hue, 255, 255),
-    float(random(100)) / 100.0 * .2 + .8, //speed
-    60000, //lifespan
-    3, //behavior, 3 = always turn right
+    //float(random(100)) / 100.0 * .2 + .8, //speed
+    0.15, //speed
+    4000, //lifespan
+    0, //behavior, 3 = always turn right
     hue
   );
 }
 
-int loopCounter = 0;
-extern int loopFireRippleEnabled;
-extern int manualFireRipple;
+int nextRipple = 0;
+int nextDirection = 0;
+int nextColor = 0;
+int rippleFired = 0;
+unsigned long lastRippleTime = 0;
 
 void loop(){
-  //unsigned long benchmark = millis();
+  unsigned long benchmark = millis();
+
+  if((benchmark-lastRippleTime) > 500){
+    rippleFired = 0;
+  }
   
-  if(loopCounter == 270){
-    loopCounter = 0;
-    if(ripples[0].state == dead && loopFireRippleEnabled){
-      FireRipple();
+  if(!rippleFired){
+    if(ripples[nextRipple].state == dead && loopFireRippleEnabled){
+      Serial.print("Firing ripple ");
+      Serial.print(nextRipple);
+      Serial.print(" in direction ");
+      Serial.println(directions[nextDirection]);
+      FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
+      rippleFired = 1;
+      lastRippleTime = millis();
+      nextRipple = nextRipple%NUMBER_OF_RIPPLES;
+      nextDirection = nextDirection%NUMBER_OF_DIRECTIONS;
+      nextColor = (nextColor)%7;
+      Serial.print("Next ripple ");
+      Serial.print(nextRipple);
+      Serial.print(", next direction ");
+      Serial.println(directions[nextDirection]);
     }
   }
-  loopCounter++;
 
-  if(manualFireRipple && ripples[0].state == dead){
+  if(manualFireRipple && ripples[nextRipple].state == dead){
     manualFireRipple = 0;
-    FireRipple();
+    FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
+    nextRipple = (nextRipple)%NUMBER_OF_RIPPLES;
+    nextDirection = (nextDirection)%NUMBER_OF_DIRECTIONS;
+    nextColor = (nextColor)%7;
   }
   
   OscWiFi.parse();
@@ -151,18 +190,18 @@ void loop(){
   
   // Fade all dots to create trails
   
-  for (int strip = 0; strip < NUMBER_OF_SEGMENTS ; strip++){
+  for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
     for (int led = 0; led < 11; led++) {
-       ledHues[strip][led][1] *= decay; //fade brightness
+       ledHues[segment][led][1] *= decay; //fade brightness
       /*for (int i = 0; i < 3; i++) {
           ledColors[strip][led][i] *= decay;
       }*/
     }
   }
-
+/*
   for (int rip = 0; rip < NUMBER_OF_RIPPLES ; rip++){
     ripples[rip].hue += 50; //rainbow effect
-  }
+  }*/
   
   //SetPixelColor all leds to ledColors
   for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){

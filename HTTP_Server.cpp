@@ -9,6 +9,7 @@ String output26State = "off";
 String output27State = "off";
 int loopFireRippleEnabled = 1;
 int manualFireRipple = 0;
+int currentRipples = 1;
 
 String header = ""; //Variable to store the HTTP request
 
@@ -36,7 +37,7 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
             client.println("Connection: close");
             client.println();
             
-            // turns the GPIOs on and off
+            // handle HTTP requests
             if (header.indexOf("GET /ManualRipple") >= 0) {
               Serial.println("Firing Manual Ripple");
               manualFireRipple = 1;
@@ -74,6 +75,35 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
               client.println("<p> Automatic Ripples OFF </p>");
               client.println("<p><a href=\"/FireRippleEnabled/on\"><button class=\"button\">Turn on</button></a></p>");
             }
+
+            client.println("<p> Number of ripples: <input type=\"text\" id=\"textboxRipples\" value=\"");
+            client.println(currentRipples);
+            client.println("\"> </p>");
+            
+            client.println("<div> </div>");
+            client.println("<p> Rainbow: <input type=\"checkbox\" id=\"checkboxRainbow\" data-toggle=\"toggle\" data-onstyle=\"default\"  data-width=\"500%\"> ");
+            client.println("<div> </div>");
+            
+            client.println("<button onclick=\"saveData()\" id=\"buttonSave\">Save data</button> ");
+            client.println("<a href=\"/SendConfiguration\"> <button id=\"buttonSend\">Send data</button> </a> ");
+            
+            //Javascript functions
+            client.println("<script>");
+            client.println("function saveData() {");
+            client.println("document.getElementById(\"textboxRipples\").value = \"5\";");
+            client.println("}");
+            client.println("</script>");
+            /*
+            client.println("<script>");
+            client.println("window.post = function(url) {");
+            client.println("return fetch(url, {method: \"GET\", headers: {'Content-Type': 'application/json'} });");
+            client.println("}");
+            client.println("function sendData() {");
+            client.println("post(\"/FireRippleEnabled/off\"");
+            client.println("}");
+            client.println("</script>");
+            */
+            
             client.println("</body></html>");
             
             // The HTTP response ends with another blank line

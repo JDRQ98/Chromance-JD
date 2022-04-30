@@ -7,8 +7,8 @@
 #define RIPPLE_H_
 
 // WARNING: These slow things down enough to affect performance. Don't turn on unless you need them!
-#define DEBUG_ADVANCEMENT  // Print debug messages about ripples' movement
-#define DEBUG_RENDERING  // Print debug messages about translating logical to actual position
+//#define DEBUG_ADVANCEMENT  // Print debug messages about ripples' movement
+//#define DEBUG_RENDERING  // Print debug messages about translating logical to actual position
 
 #include <Adafruit_NeoPixel.h>
 #include "mapping.h"
@@ -86,9 +86,9 @@ class Ripple {
 #endif
     }
 
-    void advance(short ledColors[4][11][2]) {
+    void advance(short ledColors[NUMBER_OF_SEGMENTS][11][2]) {
       unsigned long age = millis() - birthday;
-      hue += 200;
+      //hue += 150;
       if (state == dead)
         return;
 #ifdef DEBUG_ADVANCEMENT
@@ -107,7 +107,9 @@ class Ripple {
 #endif
       if (pressure < 1 && (state == travelingUpwards || state == travelingDownwards)) {
         // Ripple is visible but hasn't moved - render it to avoid flickering
+#ifdef DEBUG_ADVANCEMENT
         Serial.println("  Calling renderLed() because pressure is less than 1");
+#endif
         renderLed(ledColors, age);
       }
 
@@ -126,15 +128,15 @@ class Ripple {
                 Serial.print("  Picking direction out of node ");
                 Serial.print(position[0]);
                 Serial.print(" with behavior ");
-                Serial.println(behavior);
+                Serial.print(behavior);
 
                 int newDirection = -1;
 
-                int sharpLeft = (position[1] - 2) % 6;
-                int wideLeft = (position[1] - 1) % 6;
-                int forward = (position[1] + 0) % 6;
-                int wideRight = (position[1] + 1) % 6;
-                int sharpRight = (position[1] + 1) % 6;
+                int sharpLeft = (position[1] + 1) % 6;
+                int wideLeft = (position[1] + 2) % 6;
+                int forward = (position[1] + 3) % 6;
+                int wideRight = (position[1] + 4) % 6;
+                int sharpRight = (position[1] + 5) % 6;
 
               
               if (behavior <= 2) {  // Semi-random aggressive turn mode
@@ -199,7 +201,8 @@ class Ripple {
 #ifdef DEBUG_ADVANCEMENT
                         Serial.println("  Turning left or right at random");
 #endif
-                        newDirection = random(2) ? sharpLeft : sharpRight;
+                        //newDirection = random(2) ? sharpLeft : sharpRight;
+                        newDirection = sharpRight;
                       }
                       else if (leftConnection >= 0) {
 #ifdef DEBUG_ADVANCEMENT
@@ -420,7 +423,7 @@ class Ripple {
     static byte rippleCount;  // Used to give them unique ID's
     byte rippleId;  // Used to identify this ripple in debug output
 
-    void renderLed(short ledColors[4][11][2], unsigned long age) {
+    void renderLed(short ledColors[NUMBER_OF_SEGMENTS][11][2], unsigned long age) {
       int strip = ledAssignments[position[0]][0];
       int led = ledAssignments[position[0]][2] + position[1];
 

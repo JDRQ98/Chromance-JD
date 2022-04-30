@@ -6,38 +6,52 @@
 #ifndef MAPPING_H_
 #define MAPPING_H_
 
-byte ledColors[4][11][3];
-short ledHues[4][11][2];
+#define NUMBER_OF_STRIPS 1
+#define NUMBER_OF_SEGMENTS 9
 
-#define NUMBER_OF_STRIPS 2
-#define NUMBER_OF_SEGMENTS 4
+byte ledColors[NUMBER_OF_SEGMENTS][11][3];
+short ledHues[NUMBER_OF_SEGMENTS][11][2];
+
 
 // Beam 0 is at 12:00 and advance clockwise
 // -1 means nothing connected on that side
-int nodeConnections[4][6] = {
-  {-1, 3, -1, -1, -1, 0},
-  {-1, 1, 0, -1, -1, -1},
-  {-1, -1, 2, -1, 1, -1},
-  {-1, -1, -1, -1, 3, 2},
+int nodeConnections[7][6] = {
+  {-1, -1, 2, -1, 3, -1},
+  {-1, 3, 7, 4, -1, -1},
+  {-1, -1, -1, 1, 8, 2},
+  {-1, 8, -1, 6, -1, 7},
+  {4, -1, 5, -1, -1, -1},
+  {1, -1, -1, -1, 0, -1},
+  {6, 0, -1, -1, -1, 5}
 };
 
 // First member: Node closer to ceiling
 // Second: Node closer to floor
-int segmentConnections[4][2] = {
-  {1, 0},
-  {2, 1},
-  {2, 3},
-  {3, 0}
+int segmentConnections[NUMBER_OF_SEGMENTS][2] = {
+  {5, 6},
+  {2, 5},
+  {0, 2},
+  {0, 1},
+  {1, 4},
+  {4, 6},
+  {3, 6},
+  {1, 3},
+  {2, 3}
 };
 
 // First member: Strip number
 // Second: LED index closer to ceiling
 // Third: LED index closer to floor
-int ledAssignments[4][3] = {
+int ledAssignments[NUMBER_OF_SEGMENTS][3] = {
   {0,10,0},
   {0,21,11},
-  {1,21,11},
-  {1,10,0},
+  {0,32,22},
+  {0,33,43},
+  {0,44,54},
+  {0,55,65},
+  {0,77,66},
+  {0,87,77},
+  {0,98,88}
 };
 
 // Border nodes are on the very edge of the network.
