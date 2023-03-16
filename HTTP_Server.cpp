@@ -1,5 +1,16 @@
 #include <WiFi.h>
 
+
+// WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
+const char* ssid = "TP-Link-150";
+const char* password = "Cenote#150";
+
+const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should request
+const IPAddress gateway(192, 168, 0, 1);  // Your router
+const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
+
+WiFiServer server(80); //Open port number 80 (HTTP)
+
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 const long timeout = 2000;
@@ -9,7 +20,7 @@ String output26State = "off";
 String output27State = "off";
 int loopFireRippleEnabled = 1;
 int manualFireRipple = 0;
-int currentRipples = 1;
+int currentNumberofRipples = 9;
 
 String header = ""; //Variable to store the HTTP request
 
@@ -47,6 +58,22 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
             } else if (header.indexOf("GET /FireRippleEnabled/off") >= 0) {
               Serial.println("loopFireRippleEnabled off");
               loopFireRippleEnabled = 0;
+            } else if (header.indexOf("POST /updateVariable") >= 0) {
+              Serial.println("received the following POST request (Raw): \n");
+              Serial.println(header);
+              int startPos = header.indexOf("variable=") + 9; // add 9 to move past "variable="
+              int endPos = header.indexOf("&");
+              Serial.println("startPos: \n");
+              Serial.println(startPos);
+              if(startPos != 8) { /* payload found */
+                String variableValueStr = header.substring(startPos, endPos);
+                int variableValue = variableValueStr.toInt();
+                currentNumberofRipples = variableValue; // update the variable
+              }
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type:text/html");
+              client.println();
+              client.println("Variable updated");
             }
             
             // Display the HTML web page
@@ -67,18 +94,23 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
             client.println("<p> Fire Manual Ripple </p>");
             client.println("<p><a href=\"/ManualRipple\"><button class=\"button\">Fire!</button></a></p>");
                
-            // Display current state, and ON/OFF buttons for loopFireRippleEnabled     
-            if (loopFireRippleEnabled) {
-              client.println("<p> Automatic Ripples ON </p>");
-              client.println("<p><a href=\"/FireRippleEnabled/off\"><button class=\"button button2\">Turn off</button></a></p>");
-            } else {
-              client.println("<p> Automatic Ripples OFF </p>");
-              client.println("<p><a href=\"/FireRippleEnabled/on\"><button class=\"button\">Turn on</button></a></p>");
+            // Display ON/OFF checkbox for loopFireRippleEnabled
+            if (loopFireRippleEnabled)
+            {
+              client.println("<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\" checked><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>");
+            }
+            else
+            {
+              client.println("<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\"><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>");
             }
 
-            client.println("<p> Number of ripples: <input type=\"text\" id=\"textboxRipples\" value=\"");
-            client.println(currentRipples);
-            client.println("\"> </p>");
+            /* Text input for number of ripples */
+            client.println("<form action=\"/updateVariable\" method=\"post\">");
+            client.println("<label for=\"variable\">Enter a value for the variable:</label>");
+            client.println("<input type=\"text\" id=\"variable\" name=\"variable\" value=\"" + String(currentNumberofRipples) + "\">");
+            client.println("<button type=\"submit\">Submit</button>");
+            client.println("</form>");
+            
             
             client.println("<div> </div>");
             client.println("<p> Rainbow: <input type=\"checkbox\" id=\"checkboxRainbow\" data-toggle=\"toggle\" data-onstyle=\"default\"  data-width=\"500%\"> ");
@@ -88,24 +120,27 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
             client.println("<a href=\"/SendConfiguration\"> <button id=\"buttonSend\">Send data</button> </a> ");
             
             //Javascript functions
-            client.println("<script>");
-            client.println("function saveData() {");
-            client.println("document.getElementById(\"textboxRipples\").value = \"5\";");
-            client.println("}");
-            client.println("</script>");
-            /*
-            client.println("<script>");
-            client.println("window.post = function(url) {");
-            client.println("return fetch(url, {method: \"GET\", headers: {'Content-Type': 'application/json'} });");
-            client.println("}");
-            client.println("function sendData() {");
-            client.println("post(\"/FireRippleEnabled/off\"");
-            client.println("}");
-            client.println("</script>");
-            */
-            
-            client.println("</body></html>");
-            
+            client.println("<script> function toggleAutoRipple(checkbox)");
+            client.println("{if (checkbox.checked){");
+                // checkbox is checked, turn on automatic ripples
+                client.println("fetch('/FireRippleEnabled/on');}");
+              client.println("else{");
+                // checkbox is unchecked, turn off automatic ripples
+                client.println("fetch('/FireRippleEnabled/off');}");
+            client.println("}</script>");
+                /*
+                client.println("<script>");
+                client.println("window.post = function(url) {");
+                client.println("return fetch(url, {method: \"GET\", headers: {'Content-Type': 'application/json'} });");
+                client.println("}");
+                client.println("function sendData() {");
+                client.println("post(\"/FireRippleEnabled/off\"");
+                client.println("}");
+                client.println("</script>");
+                */
+
+                client.println("</body></html>");
+
             // The HTTP response ends with another blank line
             client.println();
             // Break out of the while loop
@@ -125,3 +160,25 @@ void HandleHTTPRequest(WiFiClient client){                         // If a new c
     Serial.println("Client disconnected.");
     Serial.println("");
 }
+
+void WiFi_MainFunction(void){
+  WiFiClient client = server.available();   // Listen for incoming clients
+  if (client) {                             // If a new client connects,
+    Serial.println("New Client. Handling HTTP request");
+    HandleHTTPRequest(client);
+  }
+}
+
+  void WiFi_init(void){
+      WiFi.mode(WIFI_STA);
+      WiFi.begin(ssid, password);
+      WiFi.config(ip, gateway, subnet);
+      while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        Serial.println("Connection Failed! Rebooting...");
+        delay(50000);
+        ESP.restart();
+      }
+      server.begin();
+      Serial.print("WiFi connected! IP = ");
+      Serial.println(WiFi.localIP());
+  }

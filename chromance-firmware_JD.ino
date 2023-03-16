@@ -8,11 +8,9 @@
 
 #include <Adafruit_NeoPixel.h>
 #include <SPI.h>
-#include <ArduinoOSCWiFi.h>
-#include <WiFi.h>
 #include <ESPmDNS.h>
-#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <ArduinoOSCWiFi.h>
 
 #include "mapping.h"
 #include "ripple.h"
@@ -23,18 +21,7 @@
 int directions[NUMBER_OF_DIRECTIONS] = {3,5,1};
 extern int loopFireRippleEnabled;
 extern int manualFireRipple;
-
-
-// WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
-const char* ssid = "TP-Link-150";
-const char* password = "Cenote#150";
-
-const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should request
-const IPAddress gateway(192, 168, 0, 1);  // Your router
-const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
-
-WiFiServer server(80); //Open port number 80 (HTTP)
-
+extern int currentNumberofRipples;
 
 
 int lengths[NUMBER_OF_STRIPS] = {99}; 
@@ -44,11 +31,10 @@ Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0};
 
 
-
 float decay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
 // These ripples are endlessly reused so we don't need to do any memory management
-#define NUMBER_OF_RIPPLES 9
+#define NUMBER_OF_RIPPLES 20
 Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(0),
   Ripple(1),
@@ -58,7 +44,18 @@ Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(5),
   Ripple(6),
   Ripple(7),
-  Ripple(8)
+  Ripple(8),
+  Ripple(9),
+  Ripple(10),
+  Ripple(11),
+  Ripple(12),
+  Ripple(13),
+  Ripple(14),
+  Ripple(15),
+  Ripple(16),
+  Ripple(17),
+  Ripple(18),
+  Ripple(19)
 };
 
 
@@ -73,20 +70,8 @@ void setup() {
     strips[i].show();
   }
 
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  WiFi.config(ip, gateway, subnet);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
-    delay(50000);
-    ESP.restart();
-  }
-
-  Serial.print("WiFi connected! IP = ");
-  Serial.println(WiFi.localIP());
-  
-  server.begin();
+  WiFi_init();
+ 
 
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
@@ -118,8 +103,7 @@ void setup() {
   ArduinoOTA.begin();
 
   Serial.println("Ready for WiFi OTA updates");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+
   
 }
 
@@ -160,7 +144,7 @@ void loop(){
       FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
       rippleFired = 1;
       lastRippleTime = millis();
-      nextRipple = nextRipple%NUMBER_OF_RIPPLES;
+      nextRipple = nextRipple%currentNumberofRipples;
       nextDirection = nextDirection%NUMBER_OF_DIRECTIONS;
       nextColor = (nextColor)%7;
       Serial.print("Next ripple ");
@@ -173,20 +157,16 @@ void loop(){
   if(manualFireRipple && ripples[nextRipple].state == dead){
     manualFireRipple = 0;
     FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
-    nextRipple = (nextRipple)%NUMBER_OF_RIPPLES;
+    nextRipple = (nextRipple)%currentNumberofRipples;
     nextDirection = (nextDirection)%NUMBER_OF_DIRECTIONS;
     nextColor = (nextColor)%7;
   }
   
   OscWiFi.parse();
-  ArduinoOTA.handle();						// Handle OTA updates
+  ArduinoOTA.handle();            // Handle OTA updates
 
-  
-  WiFiClient client = server.available();   // Listen for incoming clients
-  if (client) {                             // If a new client connects,
-    Serial.println("New Client. Handling HTTP request");
-    HandleHTTPRequest(client);
-  }
+
+  WiFi_MainFunction();
   
   // Fade all dots to create trails
   
@@ -232,7 +212,7 @@ void loop(){
     }
   }
 
-  for (int i = 0; i < NUMBER_OF_RIPPLES; i++) {
+  for (int i = 0; i < currentNumberofRipples; i++) {
     ripples[i].advance(ledHues);
   }
 

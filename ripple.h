@@ -55,6 +55,8 @@ class Ripple {
 
     // Place the Ripple in a node
     void start(byte n, byte d, unsigned long c, float s, unsigned long l, byte b, unsigned short h) {
+      position[0] = n; /* starting node */
+      position[1] = d; /* direction */
       color = c;
       hue = h;
       speed = s;
@@ -65,8 +67,7 @@ class Ripple {
       pressure = 0;
       state = withinNode;
 
-      position[0] = n;
-      position[1] = d;
+      
 
       justStarted = true;
 
@@ -125,11 +126,12 @@ class Ripple {
               if (justStarted) {
                 justStarted = false;
               } else {
+#ifdef DEBUG_ADVANCEMENT
                 Serial.print("  Picking direction out of node ");
                 Serial.print(position[0]);
                 Serial.print(" with behavior ");
                 Serial.print(behavior);
-
+#endif
                 int newDirection = -1;
 
                 int sharpLeft = (position[1] + 1) % 6;
@@ -380,7 +382,9 @@ class Ripple {
 
         if (state == travelingUpwards || state == travelingDownwards) {
           // Ripple is visible - render it
+#ifdef DEBUG_ADVANCEMENT
           Serial.println("  Calling renderLed() inside while loop");
+#endif
           renderLed(ledColors, age);
         }
       }
