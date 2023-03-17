@@ -22,6 +22,10 @@ int directions[NUMBER_OF_DIRECTIONS] = {3,5,1};
 extern int loopFireRippleEnabled;
 extern int manualFireRipple;
 extern int currentNumberofRipples;
+extern int currentNumberofColors;
+extern short currentDelayBetweenRipples;
+extern short currentRippleLifeSpan;
+extern float currentDecay;
 
 
 int lengths[NUMBER_OF_STRIPS] = {99}; 
@@ -31,10 +35,9 @@ Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0};
 
 
-float decay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
+
 
 // These ripples are endlessly reused so we don't need to do any memory management
-#define NUMBER_OF_RIPPLES 20
 Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(0),
   Ripple(1),
@@ -72,7 +75,6 @@ void setup() {
 
   WiFi_init();
  
-
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
   .onStart([]() {
@@ -103,7 +105,6 @@ void setup() {
   ArduinoOTA.begin();
 
   Serial.println("Ready for WiFi OTA updates");
-
   
 }
 
@@ -116,7 +117,7 @@ void FireRipple(int ripple, int dir, int col){
     strip0.ColorHSV(hue, 255, 255),
     //float(random(100)) / 100.0 * .2 + .8, //speed
     0.15, //speed
-    4000, //lifespan
+    currentRippleLifeSpan, //lifespan
     0, //behavior, 3 = always turn right
     hue
   );
@@ -131,7 +132,7 @@ unsigned long lastRippleTime = 0;
 void loop(){
   unsigned long benchmark = millis();
 
-  if((benchmark-lastRippleTime) > 500){
+  if((benchmark-lastRippleTime) > currentDelayBetweenRipples){
     rippleFired = 0;
   }
   
@@ -146,11 +147,13 @@ void loop(){
       lastRippleTime = millis();
       nextRipple = nextRipple%currentNumberofRipples;
       nextDirection = nextDirection%NUMBER_OF_DIRECTIONS;
-      nextColor = (nextColor)%7;
+      nextColor = (nextColor)%currentNumberofColors;
+      /*
       Serial.print("Next ripple ");
       Serial.print(nextRipple);
       Serial.print(", next direction ");
       Serial.println(directions[nextDirection]);
+      */
     }
   }
 
@@ -161,7 +164,7 @@ void loop(){
     nextDirection = (nextDirection)%NUMBER_OF_DIRECTIONS;
     nextColor = (nextColor)%7;
   }
-  
+
   OscWiFi.parse();
   ArduinoOTA.handle();            // Handle OTA updates
 
@@ -172,9 +175,9 @@ void loop(){
   
   for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
     for (int led = 0; led < 11; led++) {
-       ledHues[segment][led][1] *= decay; //fade brightness
+       ledHues[segment][led][1] *= currentDecay; //fade brightness
       /*for (int i = 0; i < 3; i++) {
-          ledColors[strip][led][i] *= decay;
+          ledColors[strip][led][i] *= currentDecay;
       }*/
     }
   }

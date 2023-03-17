@@ -1,4 +1,10 @@
 #include <WiFi.h>
+#include <ArduinoJson.h>
+#include <WebServer.h>
+#include <string>  
+using namespace std;
+
+#include "HTTP_Server.h" 
 
 
 // WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
@@ -9,176 +15,211 @@ const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should req
 const IPAddress gateway(192, 168, 0, 1);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
 
-WiFiServer server(80); //Open port number 80 (HTTP)
+WebServer server(80); //Open port number 80 (HTTP)
 
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 const long timeout = 2000;
 
 // Auxiliar variables to store the current output state
-String output26State = "off";
-String output27State = "off";
 int loopFireRippleEnabled = 1;
 int manualFireRipple = 0;
 int currentNumberofRipples = 9;
+int currentNumberofColors = 7;
+short currentDelayBetweenRipples = 500; /* in milliseconds */
+short currentRippleLifeSpan = 4000; /* in milliseconds */
+float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
-String header = ""; //Variable to store the HTTP request
+String SendHTML(void) {
+  // Display the HTML web page
+  String ptr = "<!DOCTYPE html> <html>\n";
+  ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n";
+  ptr += "<link rel=\"icon\" href=\"data:,\">\n";
+  // CSS to style the on/off buttons 
+  // Feel free to change the background-color and font-size attributes to fit your preferences
+  ptr += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+  ptr += ".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;\n";
+  ptr += "text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}\n";
+  ptr += "text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}\n";
+  ptr += ".button2 {background-color: #555555;}\n";
+  ptr += "form div {\n";
+  ptr += " display: flex;\n";
+  ptr += " justify-content: space-between;\n";
+  ptr += " margin: 10px 0;\n";
+  ptr += "}\n";
+  ptr += "form div label {\n";
+  ptr += " flex: 1;\n";
+  ptr += " text-align: left;\n";
+  ptr += "}\n";
+  ptr += "form div input {\n";
+  ptr += " flex: 1;\n";
+  ptr += " text-align: right;\n";
+  ptr += "}\n";
+  ptr += "</style></head>\n";
+  
+  /* Web Page Heading */
+  ptr += "<body><h1>ESP32 Web Server</h1>\n";
+  
+  /* Fire manual Ripple button */
+  ptr += "<p> Fire Manual Ripple </p>\n";
+  ptr += "<p><a href=\"/ManualRipple\"><button class=\"button\">Fire!</button></a></p>\n";
+  
+  /* Display ON/OFF checkbox for loopFireRippleEnabled */
+  if (loopFireRippleEnabled) {
+    ptr += "<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\" checked><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>\n";
+  } else {
+    ptr += "<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\"><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>\n";
+  }
+  
+  /* Text input for number of ripples */
+  ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
+  ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 19]:</label>\n";
+  ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
+  ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [50 - 2000]:</label>\n";
+  ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
+  ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [500 - 10000]:</label>\n";
+  ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(currentRippleLifeSpan) + "\"></div>\n";
+  ptr += "<div><label for=\"currentNumberofColors\">Enter desired number of colors [3 - 25]:</label>\n";
+  ptr += "<input id=\"currentNumberofColors\" name=\"currentNumberofColors\" value=\"" + String(currentNumberofColors) + "\"></div>\n";
+  ptr += "<div><label for=\"currentDecay\">Enter decay per tick [0.75 - 0.995]:</label>\n";
+  ptr += "<input id=\"currentDecay\" name=\"currentDecay\" value=\"" + String(currentDecay, 3) + "\"></div>\n";
+  ptr += "<div><button type=\"submit\">Submit</button></div>\n";
+  ptr += "</form>\n";
+  
+  /* Javascript functions */
+  ptr += "<script> function toggleAutoRipple(checkbox)\n";
+    ptr += "{if (checkbox.checked){\n";
+    // checkbox is checked, turn on automatic ripples
+    ptr += "fetch('/FireRippleEnabled/on');}\n";
+    ptr += "else{\n";
+    // checkbox is unchecked, turn off automatic ripples
+    ptr += "fetch('/FireRippleEnabled/off');}\n";
+  ptr += "}</script>\n";
+  
+  ptr += "</body></html>\n";
+  /* The HTTP response ends with another blank line */
+  ptr += "\n";
+  return ptr;
+}
 
+/* HANDLER FUNCTIONS */
 
+void handle_PostRequest() {
+  if (server.method() == HTTP_POST){
+    Serial.println("received new POST request!");
 
-void HandleHTTPRequest(WiFiClient client){                         // If a new client connects,
-    currentTime = millis();
-    previousTime = currentTime;
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected() && currentTime - previousTime <= timeout) {  // loop while the client's connected
-      currentTime = millis();
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                    // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
-            
-            // handle HTTP requests
-            if (header.indexOf("GET /ManualRipple") >= 0) {
-              Serial.println("Firing Manual Ripple");
-              manualFireRipple = 1;
-            } else if (header.indexOf("GET /FireRippleEnabled/on") >= 0) {
-              Serial.println("loopFireRippleEnabled on");
-              loopFireRippleEnabled = 1;
-            } else if (header.indexOf("GET /FireRippleEnabled/off") >= 0) {
-              Serial.println("loopFireRippleEnabled off");
-              loopFireRippleEnabled = 0;
-            } else if (header.indexOf("POST /updateVariable") >= 0) {
-              Serial.println("received the following POST request (Raw): \n");
-              Serial.println(header);
-              int startPos = header.indexOf("variable=") + 9; // add 9 to move past "variable="
-              int endPos = header.indexOf("&");
-              Serial.println("startPos: \n");
-              Serial.println(startPos);
-              if(startPos != 8) { /* payload found */
-                String variableValueStr = header.substring(startPos, endPos);
-                int variableValue = variableValueStr.toInt();
-                currentNumberofRipples = variableValue; // update the variable
-              }
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
-              client.println();
-              client.println("Variable updated");
-            }
-            
-            // Display the HTML web page
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            // CSS to style the on/off buttons 
-            // Feel free to change the background-color and font-size attributes to fit your preferences
-            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
-            client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
-            client.println(".button2 {background-color: #555555;}</style></head>");
-            
-            // Web Page Heading
-            client.println("<body><h1>ESP32 Web Server</h1>");
-            
-            // Display current state, and ON/OFF buttons for GPIO 26  
-            client.println("<p> Fire Manual Ripple </p>");
-            client.println("<p><a href=\"/ManualRipple\"><button class=\"button\">Fire!</button></a></p>");
-               
-            // Display ON/OFF checkbox for loopFireRippleEnabled
-            if (loopFireRippleEnabled)
-            {
-              client.println("<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\" checked><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>");
-            }
-            else
-            {
-              client.println("<p><input type=\"checkbox\" id=\"auto-ripple-checkbox\" name=\"auto-ripple\" value=\"1\" onchange=\"toggleAutoRipple(this)\"><label for=\"auto-ripple-checkbox\">Automatic Ripples</label></p>");
-            }
+    String message = "POST form contents:\n";
+    for (uint8_t i = 0; i < server.args(); i++) { message += "" + server.argName(i) + ": " + server.arg(i) + "\n "; }
+    Serial.println(message);
 
-            /* Text input for number of ripples */
-            client.println("<form action=\"/updateVariable\" method=\"post\">");
-            client.println("<label for=\"variable\">Enter a value for the variable:</label>");
-            client.println("<input type=\"text\" id=\"variable\" name=\"variable\" value=\"" + String(currentNumberofRipples) + "\">");
-            client.println("<button type=\"submit\">Submit</button>");
-            client.println("</form>");
-            
-            
-            client.println("<div> </div>");
-            client.println("<p> Rainbow: <input type=\"checkbox\" id=\"checkboxRainbow\" data-toggle=\"toggle\" data-onstyle=\"default\"  data-width=\"500%\"> ");
-            client.println("<div> </div>");
-            
-            client.println("<button onclick=\"saveData()\" id=\"buttonSave\">Save data</button> ");
-            client.println("<a href=\"/SendConfiguration\"> <button id=\"buttonSend\">Send data</button> </a> ");
-            
-            //Javascript functions
-            client.println("<script> function toggleAutoRipple(checkbox)");
-            client.println("{if (checkbox.checked){");
-                // checkbox is checked, turn on automatic ripples
-                client.println("fetch('/FireRippleEnabled/on');}");
-              client.println("else{");
-                // checkbox is unchecked, turn off automatic ripples
-                client.println("fetch('/FireRippleEnabled/off');}");
-            client.println("}</script>");
-                /*
-                client.println("<script>");
-                client.println("window.post = function(url) {");
-                client.println("return fetch(url, {method: \"GET\", headers: {'Content-Type': 'application/json'} });");
-                client.println("}");
-                client.println("function sendData() {");
-                client.println("post(\"/FireRippleEnabled/off\"");
-                client.println("}");
-                client.println("</script>");
-                */
-
-                client.println("</body></html>");
-
-            // The HTTP response ends with another blank line
-            client.println();
-            // Break out of the while loop
-            break;
-          } else { // if you got a newline, then clear currentLine
-            currentLine = "";
-          }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-      }
+    int NumberofRipples = server.arg(0).toInt();
+    short DelayBetweenRipples = server.arg(1).toInt();
+    short RippleLifeSpan = server.arg(2).toInt();
+    int NumberofColors = server.arg(3).toInt();
+    float Decay = server.arg(4).toFloat();
+    
+    if(NumberofRipples > 0 && NumberofRipples < 20){ /* new value received */
+      Serial.print("received new NumberofRipples from POST request: ");
+      Serial.print(NumberofRipples);
+      Serial.print(". Previous value: ");
+      Serial.println(currentNumberofRipples);
+      currentNumberofRipples = NumberofRipples;
+    } else {
+      Serial.println("new NumberofRipples not valid; discarded.");
     }
-    // Clear the header variable
-    header = "";
-    // Close the connection
-    client.stop();
-    Serial.println("Client disconnected.");
-    Serial.println("");
+    
+    if(DelayBetweenRipples >= 50 && DelayBetweenRipples < 2000){ /* new value received */
+      Serial.print("received new DelayBetweenRipples from POST request: ");
+      Serial.print(DelayBetweenRipples);
+      Serial.print(". Previous value: ");
+      Serial.println(currentDelayBetweenRipples);
+      currentDelayBetweenRipples = DelayBetweenRipples;
+    } else {
+      Serial.println("new DelayBetweenRipples not valid; discarded.");
+    }
+    
+    if(RippleLifeSpan >= 500 && RippleLifeSpan <= 10000){ /* new value received */
+      Serial.print("received new RippleLifeSpan from POST request: ");
+      Serial.print(RippleLifeSpan);
+      Serial.print(". Previous value: ");
+      Serial.println(currentRippleLifeSpan);
+      currentRippleLifeSpan = RippleLifeSpan;
+    } else {
+      Serial.println("new RippleLifeSpan not valid; discarded.");
+    }
+
+    if(NumberofColors >= 3 && NumberofColors <= 25){ /* new value received */
+      Serial.print("received new NumberofColors from POST request: ");
+      Serial.print(NumberofColors);
+      Serial.print(". Previous value: ");
+      Serial.println(currentNumberofColors);
+      currentNumberofColors = NumberofColors;
+    } else {
+      Serial.println("new NumberofColors not valid; discarded.");
+    }
+
+    if(Decay >= 0.75 && Decay <= 0.996){ /* new value received */
+      Serial.print("received new Decay factor from POST request: ");
+      Serial.print(String(Decay, 3));
+      Serial.print(". Previous value: ");
+      Serial.println(String(currentDecay, 3));
+      currentDecay = Decay;
+    } else {
+      Serial.println("new Decay not valid; discarded.");
+    }
+    
+    server.send(500, "text/html", SendHTML());
+    server.send(200, "application/json", "{}");
+  }
 }
 
+void handle_OnConnect() {
+  Serial.println("New client connected!");
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_ManualRipple() {
+  Serial.println("Received manual ripple request");
+  manualFireRipple = 1;
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_FireRippleEnabled_On() {
+  Serial.println("Automatic ripples: ON");
+  loopFireRippleEnabled = 1;
+}
+
+void handle_FireRippleEnabled_Off() {
+  Serial.println("Automatic ripples: OFF");
+  loopFireRippleEnabled = 0;
+}
+
+/* to be called periodically inside loop() */
 void WiFi_MainFunction(void){
-  WiFiClient client = server.available();   // Listen for incoming clients
-  if (client) {                             // If a new client connects,
-    Serial.println("New Client. Handling HTTP request");
-    HandleHTTPRequest(client);
-  }
+  server.handleClient();
 }
 
-  void WiFi_init(void){
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(ssid, password);
-      WiFi.config(ip, gateway, subnet);
-      while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.println("Connection Failed! Rebooting...");
-        delay(50000);
-        ESP.restart();
-      }
-      server.begin();
-      Serial.print("WiFi connected! IP = ");
-      Serial.println(WiFi.localIP());
+/* to be called once at startup */
+void WiFi_init(void){
+  /* Setup WiFi network */
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  WiFi.config(ip, gateway, subnet);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(1000);
+    ESP.restart();
   }
+  
+  /* Setup REST API Handlers */
+  server.on("/", handle_OnConnect);
+  server.on("/ManualRipple", handle_ManualRipple);
+  server.on("/FireRippleEnabled/on", handle_FireRippleEnabled_On);
+  server.on("/FireRippleEnabled/off", handle_FireRippleEnabled_Off);
+  server.on("/updateInternalVariables", HTTP_POST, handle_PostRequest); 
+  
+  /* Begin Server */
+  server.begin();
+  Serial.print("WiFi connected! IP = ");
+  Serial.println(WiFi.localIP());
+}

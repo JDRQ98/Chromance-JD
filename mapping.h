@@ -9,6 +9,8 @@
 #define NUMBER_OF_STRIPS 1
 #define NUMBER_OF_SEGMENTS 9
 
+#define NUMBER_OF_RIPPLES 20 /* for memory management: max number of ripples */
+
 byte ledColors[NUMBER_OF_SEGMENTS][11][3];
 short ledHues[NUMBER_OF_SEGMENTS][11][2];
 
