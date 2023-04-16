@@ -9,6 +9,7 @@
 // WARNING: These slow things down enough to affect performance. Don't turn on unless you need them!
 //#define DEBUG_ADVANCEMENT  // Print debug messages about ripples' movement
 //#define DEBUG_RENDERING  // Print debug messages about translating logical to actual position
+//#define DEBUG_PRESSURE
 
 #include <Adafruit_NeoPixel.h>
 #include "mapping.h"
@@ -33,7 +34,7 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
 }
 
 
-void FireRipple();
+void FireRipple(int ripple, int dir, int col, int node);
 
 class Ripple {
   public:
@@ -92,7 +93,7 @@ class Ripple {
       //hue += 150;
       if (state == dead)
         return;
-#ifdef DEBUG_ADVANCEMENT
+#ifdef DEBUG_PRESSURE
         Serial.print("  Pressure calculation. Starting pressure: ");
         Serial.print(pressure);
         Serial.print(", age: ");
@@ -102,13 +103,13 @@ class Ripple {
 #endif
       pressure += fmap(float(age), 0.0, float(lifespan), speed, speed/2);  // Ripple slows down as it ages
       // TODO: Motion of ripple is severely affected by loop speed. Make it time invariant
-#ifdef DEBUG_ADVANCEMENT
+#ifdef DEBUG_PRESSURE
         Serial.print("  Pressure calculation. Ending pressure: ");
         Serial.println(pressure);
 #endif
       if (pressure < 1 && (state == travelingUpwards || state == travelingDownwards)) {
         // Ripple is visible but hasn't moved - render it to avoid flickering
-#ifdef DEBUG_ADVANCEMENT
+#ifdef DEBUG_PRESSURE
         Serial.println("  Calling renderLed() because pressure is less than 1");
 #endif
         renderLed(ledColors, age);
@@ -307,7 +308,7 @@ class Ripple {
 #endif
                 // Enter the new node.
                 int segment = position[0];
-                position[0] = segmentConnections[position[0]][0];
+                position[0] = segmentConnections[position[0]][0]; /* assign position [0] to node we just enterred */
                 for (int i = 0; i < 6; i++) {
                   // Figure out from which direction the ripple is entering the node.
                   // Allows us to exit in an appropriately aggressive direction.
@@ -389,7 +390,7 @@ class Ripple {
         }
       }
 
-#ifdef DEBUG_ADVANCEMENT
+#ifdef DEBUG_PRESSURE
       Serial.print("  Age is now ");
       Serial.print(age);
       Serial.print('/');
@@ -444,10 +445,6 @@ class Ripple {
       Serial.print(strip);
       Serial.print(", LED ");
       Serial.print(led);
-      Serial.print(", old color (RGB): 0x");
-      Serial.print(color, HEX);
-      Serial.print(", old hue: ");
-      Serial.print(hue);
       /*
       for (int i = 0; i < 3; i++) {
         if (ledColors[position[0]][position[1]][i] <= 0x0F)

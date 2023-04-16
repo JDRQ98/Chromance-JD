@@ -16,9 +16,13 @@
 #include "ripple.h"
 #include "HTTP_Server.h"
 
-#define NUMBER_OF_DIRECTIONS 3
+#define NUMBER_OF_DIRECTIONS 6
+#define NUMBER_OF_STARTING_NODES 1
 
-int directions[NUMBER_OF_DIRECTIONS] = {3,5,1};
+//#define ENABLE_DEBUGGING
+
+int directions[NUMBER_OF_DIRECTIONS] = {0,1,2,3,4,5};
+int starting_nodes[NUMBER_OF_STARTING_NODES] = {9};
 extern int loopFireRippleEnabled;
 extern int manualFireRipple;
 extern int currentNumberofRipples;
@@ -28,15 +32,16 @@ extern short currentRippleLifeSpan;
 extern float currentDecay;
 
 
-int lengths[NUMBER_OF_STRIPS] = {99}; 
+int lengths[NUMBER_OF_STRIPS] = {165, 165}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
 Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0};
+Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
 
 
 
-
+#define NUMBER_OF_RIPPLES 10 /* for memory management: max number of ripples */
 // These ripples are endlessly reused so we don't need to do any memory management
 Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(0),
@@ -49,16 +54,6 @@ Ripple ripples[NUMBER_OF_RIPPLES] = {
   Ripple(7),
   Ripple(8),
   Ripple(9),
-  Ripple(10),
-  Ripple(11),
-  Ripple(12),
-  Ripple(13),
-  Ripple(14),
-  Ripple(15),
-  Ripple(16),
-  Ripple(17),
-  Ripple(18),
-  Ripple(19)
 };
 
 
@@ -69,7 +64,7 @@ void setup() {
 
   for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
     strips[i].begin();
-    //    strips[i].setBrightness(125);  // If your PSU sucks, use this to limit the current
+    //strips[i].setBrightness(125);  // If your PSU sucks, use this to limit the current
     strips[i].show();
   }
 
@@ -108,25 +103,34 @@ void setup() {
   
 }
 
-void FireRipple(int ripple, int dir, int col){
+void FireRipple(int ripple, int dir, int col, int node){
   //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
   int hue = fmap(col, 0, 7, 0, 0xFFFF);
   ripples[ripple].start(
-    3, //starting node
+    node, //starting node
     dir, //direction
     strip0.ColorHSV(hue, 255, 255),
     //float(random(100)) / 100.0 * .2 + .8, //speed
-    0.15, //speed
+    0.25, //speed
     currentRippleLifeSpan, //lifespan
-    0, //behavior, 3 = always turn right
+    4, //behavior, 3 = always turn right
     hue
   );
+  #ifdef ENABLE_DEBUGGING
+      Serial.print("Firing ripple ");
+      Serial.print(ripple);
+      Serial.print(" from node ");
+      Serial.print(node);
+      Serial.print(" in direction ");
+      Serial.println(dir);
+  #endif
 }
 
 int nextRipple = 0;
 int nextDirection = 0;
 int nextColor = 0;
 int rippleFired = 0;
+int nextNode = 0;
 unsigned long lastRippleTime = 0;
 
 void loop(){
@@ -142,27 +146,23 @@ void loop(){
       Serial.print(nextRipple);
       Serial.print(" in direction ");
       Serial.println(directions[nextDirection]);
-      FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
+      FireRipple(nextRipple++, directions[nextDirection++], nextColor++, starting_nodes[nextNode++]);
       rippleFired = 1;
       lastRippleTime = millis();
       nextRipple = nextRipple%currentNumberofRipples;
       nextDirection = nextDirection%NUMBER_OF_DIRECTIONS;
       nextColor = (nextColor)%currentNumberofColors;
-      /*
-      Serial.print("Next ripple ");
-      Serial.print(nextRipple);
-      Serial.print(", next direction ");
-      Serial.println(directions[nextDirection]);
-      */
+      nextNode = nextNode%NUMBER_OF_STARTING_NODES;
     }
   }
 
   if(manualFireRipple && ripples[nextRipple].state == dead){
     manualFireRipple = 0;
-    FireRipple(nextRipple++, directions[nextDirection++], nextColor++);
+    FireRipple(nextRipple++, directions[nextDirection++], nextColor++, starting_nodes[nextNode++]);
     nextRipple = (nextRipple)%currentNumberofRipples;
     nextDirection = (nextDirection)%NUMBER_OF_DIRECTIONS;
     nextColor = (nextColor)%7;
+    nextNode = nextNode%NUMBER_OF_STARTING_NODES;
   }
 
   OscWiFi.parse();
@@ -223,7 +223,10 @@ void loop(){
   for (int strip = 0; strip < NUMBER_OF_STRIPS ; strip++){
     strips[strip].show();
   }
-  //Serial.print("Time between strip.show(): ");
-  //Serial.println(millis() - benchmark);
+
+  #ifdef ENABLE_DEBUGGING
+  Serial.print("Time between strip.show(): ");
+  Serial.println(millis() - benchmark);
+  #endif
 
 }

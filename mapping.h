@@ -10,26 +10,25 @@
 #define NUMBER_OF_SEGMENTS 30
 #define NUMBER_OF_NODES 19
 
-#define NUMBER_OF_RIPPLES 30 /* for memory management: max number of ripples */
 
 byte ledColors[NUMBER_OF_SEGMENTS][11][3];
 short ledHues[NUMBER_OF_SEGMENTS][11][2];
 
 #define beginningof(S) ((S) * 11)
-#define endof(S) (beginning(S) + 10)
+#define endof(S) (beginningof(S) + 10)
 
 #define beginningof_2ndstrip(S) ((S-15) * 11)
-#define endof_2ndstrip(S) (beginning(S-15) + 10)
+#define endof_2ndstrip(S) (beginningof_2ndstrip(S) + 10)
 
 
 // each 6-member array describes a node's connections. Begin with node closer to ceiling.
 // Beam 0 is at 12:00 and advance clockwise, -1 means nothing connected on that side
 int nodeConnections[NUMBER_OF_NODES][6] = {
   {-1, -1, 11, -1, 10, -1},     /* node 0 */
-  {-1, 10, 9 26, 25, -1},       /* node 1 */
+  {-1, 10, 9, 26, 25, -1},       /* node 1 */
   {-1, -1, 12, 29, 28, 11},     /* node 2 */
   {-1, 25, -1, 24, -1, -1},        /* node 3 */
-  {-1, 28, -1, -8, -1, 9},       /* node 4 */
+  {-1, 28, -1, 8, -1, 9},       /* node 4 */
   {-1, -1, -1, 13, -1, 12},       /* node 5 */
   {26, -1, 19, -1, 18, -1},       /* node 6 */
   {29, -1, 3, -1, 4, -1},        /* node 7 */
@@ -41,7 +40,7 @@ int nodeConnections[NUMBER_OF_NODES][6] = {
   {7, -1, 16, -1, -1, -1},        /* node 13 */
   {20, -1, 7, -1, 21, -1},        /* node 14 */
   {2, -1, -1, -1, 1, -1},        /* node 15 */
-  {22, 21, 15, 16, -1, -1},       /* node 16 */
+  {22, 21, 15, -1, -1, 16},       /* node 16 */
   {6, 1, -1, -1, 0, 7},       /* node 17 */
   {-1, 0, -1, -1, -1, 15}         /* node 18 */
 };
@@ -57,7 +56,7 @@ int segmentConnections[NUMBER_OF_SEGMENTS][2] = {
   {9, 12},
   {12, 17},
   {14, 17},
-  {4, 9},
+  {4, 9}, /* segment 8 */
   {1, 4},
   {0, 1},
   {0, 2},

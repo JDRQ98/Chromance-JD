@@ -24,10 +24,10 @@ const long timeout = 2000;
 // Auxiliar variables to store the current output state
 int loopFireRippleEnabled = 1;
 int manualFireRipple = 0;
-int currentNumberofRipples = 9;
+int currentNumberofRipples = 6;
 int currentNumberofColors = 7;
-short currentDelayBetweenRipples = 500; /* in milliseconds */
-short currentRippleLifeSpan = 4000; /* in milliseconds */
+short currentDelayBetweenRipples = 5; /* in milliseconds */
+short currentRippleLifeSpan = 2700; /* in milliseconds */
 float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
 String SendHTML(void) {
@@ -75,7 +75,7 @@ String SendHTML(void) {
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
   ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 19]:</label>\n";
   ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
-  ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [50 - 2000]:</label>\n";
+  ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [5 - 2000]:</label>\n";
   ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
   ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [500 - 10000]:</label>\n";
   ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(currentRippleLifeSpan) + "\"></div>\n";
@@ -128,7 +128,7 @@ void handle_PostRequest() {
       Serial.println("new NumberofRipples not valid; discarded.");
     }
     
-    if(DelayBetweenRipples >= 50 && DelayBetweenRipples < 2000){ /* new value received */
+    if(DelayBetweenRipples >= 5 && DelayBetweenRipples < 2000){ /* new value received */
       Serial.print("received new DelayBetweenRipples from POST request: ");
       Serial.print(DelayBetweenRipples);
       Serial.print(". Previous value: ");
