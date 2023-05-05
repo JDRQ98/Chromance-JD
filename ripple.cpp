@@ -116,11 +116,12 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned long lifespan){
+bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan){
   //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
+  int tempRipple = *ripple;
   int hue = fmap(col, 0, 7, 0, 0xFFFF);
-  if(ripples[ripple].state == dead){
-    ripples[ripple].start(
+  if(ripples[tempRipple].state == dead){
+    ripples[tempRipple].start(
         node, //starting node
         dir, //direction
         strip0.ColorHSV(hue, 255, 255),
@@ -130,9 +131,12 @@ void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned 
         behavior, //behavior, 3 = always turn right
         hue
     );
+    *ripple = tempRipple+1; /* increase ripple number */
+    return 1; /* ripple was fired */
   } 
   else{
      /* ripple is currently active; ignore request */
+     return 0;
   }
     #ifdef ENABLE_DEBUGGING
       Serial.print("Firing ripple ");

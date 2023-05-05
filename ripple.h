@@ -34,7 +34,7 @@ enum rippleBehavior {
 
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
-void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned long lifespan);
+bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan);
 void Strips_init();
 void Ripple_MainFunction();
 
