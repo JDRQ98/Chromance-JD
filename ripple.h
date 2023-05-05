@@ -14,6 +14,8 @@
 #include <Adafruit_NeoPixel.h>
 #include "mapping.h"
 
+#define NUMBER_OF_RIPPLES 100 /* for memory management: max number of ripples */
+
 enum rippleState {
   dead,
   withinNode,  // Ripple isn't drawn as it passes through a node to keep the speed consistent
@@ -29,12 +31,11 @@ enum rippleBehavior {
   alwaysTurnsLeft = 4
 };
 
-float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-
-void FireRipple(int ripple, int dir, int col, int node);
+/* public functions */
+float fmap(float x, float in_min, float in_max, float out_min, float out_max);
+void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned long lifespan);
+void Strips_init();
+void Ripple_MainFunction();
 
 class Ripple {
   public:
@@ -457,7 +458,7 @@ class Ripple {
       //ledColors[position[0]][position[1]] = short(min(65535, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0, hue)))));
       //hue = ledColors[position[0]][position[1]];
       ledColors[position[0]][position[1]][0] = short(hue);
-      ledColors[position[0]][position[1]][1] = 128; //increase brightness
+      ledColors[position[0]][position[1]][1] = 255; //increase brightness
       
       /*
       ledColors[position[0]][position[1]][0] = byte(min(255, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0.0, (color >> 8) & 0xFF)))));
@@ -483,5 +484,6 @@ class Ripple {
 #endif
     }
 };
+
 
 #endif

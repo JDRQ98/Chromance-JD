@@ -5,6 +5,7 @@
 using namespace std;
 
 #include "HTTP_Server.h" 
+#include "ripple.h"
 
 
 // WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
@@ -24,10 +25,10 @@ const long timeout = 2000;
 // Auxiliar variables to store the current output state
 int loopFireRippleEnabled = 1;
 int manualFireRipple = 0;
-int currentNumberofRipples = 6;
+int currentNumberofRipples = NUMBER_OF_RIPPLES;
 int currentNumberofColors = 7;
-short currentDelayBetweenRipples = 5; /* in milliseconds */
-short currentRippleLifeSpan = 2700; /* in milliseconds */
+short currentDelayBetweenRipples = 3000; /* in milliseconds */
+unsigned long currentRippleLifeSpan = 3000; /* in milliseconds */
 float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
 String SendHTML(void) {
@@ -73,7 +74,7 @@ String SendHTML(void) {
   
   /* Text input for number of ripples */
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
-  ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 19]:</label>\n";
+  ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 99]:</label>\n";
   ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
   ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [5 - 2000]:</label>\n";
   ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
@@ -114,11 +115,11 @@ void handle_PostRequest() {
 
     int NumberofRipples = server.arg(0).toInt();
     short DelayBetweenRipples = server.arg(1).toInt();
-    short RippleLifeSpan = server.arg(2).toInt();
+    unsigned long RippleLifeSpan = server.arg(2).toInt();
     int NumberofColors = server.arg(3).toInt();
     float Decay = server.arg(4).toFloat();
     
-    if(NumberofRipples > 0 && NumberofRipples < 20){ /* new value received */
+    if(NumberofRipples > 0 && NumberofRipples <= NUMBER_OF_RIPPLES){ /* new value received */
       Serial.print("received new NumberofRipples from POST request: ");
       Serial.print(NumberofRipples);
       Serial.print(". Previous value: ");

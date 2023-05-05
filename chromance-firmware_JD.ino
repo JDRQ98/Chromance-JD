@@ -12,63 +12,40 @@
 #include <ArduinoOTA.h>
 #include <ArduinoOSCWiFi.h>
 
-#include "mapping.h"
 #include "ripple.h"
 #include "HTTP_Server.h"
 
-#define NUMBER_OF_DIRECTIONS 6
-#define NUMBER_OF_STARTING_NODES 1
-
 //#define ENABLE_DEBUGGING
+#define NUMBER_OF_DIRECTIONS 3
+#define NUMBER_OF_STARTING_NODES 3
 
-int directions[NUMBER_OF_DIRECTIONS] = {0,1,2,3,4,5};
-int starting_nodes[NUMBER_OF_STARTING_NODES] = {9};
+/* Global Variables used by application */
+int directions[NUMBER_OF_DIRECTIONS] = {1,3,5};
+int starting_nodes[NUMBER_OF_STARTING_NODES] = {4, 11, 12};
+int nextRipple = 0;
+int nextDirection = 0;
+int nextColor = 0;
+int rippleFired_withinDelayWindow = 0;
+int nextNode = 0;
+unsigned long lastRippleTime = 0;
+
+/* control variables */
 extern int loopFireRippleEnabled;
 extern int manualFireRipple;
+
+/* parameters coming from HTTP_Server */
 extern int currentNumberofRipples;
 extern int currentNumberofColors;
 extern short currentDelayBetweenRipples;
-extern short currentRippleLifeSpan;
+extern unsigned long currentRippleLifeSpan;
 extern float currentDecay;
-
-
-int lengths[NUMBER_OF_STRIPS] = {165, 165}; 
-
-//strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
-Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
-
-
-
-#define NUMBER_OF_RIPPLES 10 /* for memory management: max number of ripples */
-// These ripples are endlessly reused so we don't need to do any memory management
-Ripple ripples[NUMBER_OF_RIPPLES] = {
-  Ripple(0),
-  Ripple(1),
-  Ripple(2),
-  Ripple(3),
-  Ripple(4),
-  Ripple(5),
-  Ripple(6),
-  Ripple(7),
-  Ripple(8),
-  Ripple(9),
-};
 
 
 void setup() {
   Serial.begin(115200);
 
-  Serial.println("*** LET'S GOOOOO ***");
-
-  for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
-    strips[i].begin();
-    //strips[i].setBrightness(125);  // If your PSU sucks, use this to limit the current
-    strips[i].show();
-  }
-
   WiFi_init();
+  Strips_init();
  
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
@@ -100,133 +77,55 @@ void setup() {
   ArduinoOTA.begin();
 
   Serial.println("Ready for WiFi OTA updates");
-  
 }
 
-void FireRipple(int ripple, int dir, int col, int node){
-  //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
-  int hue = fmap(col, 0, 7, 0, 0xFFFF);
-  ripples[ripple].start(
-    node, //starting node
-    dir, //direction
-    strip0.ColorHSV(hue, 255, 255),
-    //float(random(100)) / 100.0 * .2 + .8, //speed
-    0.25, //speed
-    currentRippleLifeSpan, //lifespan
-    4, //behavior, 3 = always turn right
-    hue
-  );
-  #ifdef ENABLE_DEBUGGING
-      Serial.print("Firing ripple ");
-      Serial.print(ripple);
-      Serial.print(" from node ");
-      Serial.print(node);
-      Serial.print(" in direction ");
-      Serial.println(dir);
-  #endif
-}
-
-int nextRipple = 0;
-int nextDirection = 0;
-int nextColor = 0;
-int rippleFired = 0;
-int nextNode = 0;
-unsigned long lastRippleTime = 0;
 
 void loop(){
   unsigned long benchmark = millis();
 
-  if((benchmark-lastRippleTime) > currentDelayBetweenRipples){
-    rippleFired = 0;
-  }
-  
-  if(!rippleFired){
-    if(ripples[nextRipple].state == dead && loopFireRippleEnabled){
-      Serial.print("Firing ripple ");
-      Serial.print(nextRipple);
-      Serial.print(" in direction ");
-      Serial.println(directions[nextDirection]);
-      FireRipple(nextRipple++, directions[nextDirection++], nextColor++, starting_nodes[nextNode++]);
-      rippleFired = 1;
-      lastRippleTime = millis();
-      nextRipple = nextRipple%currentNumberofRipples;
-      nextDirection = nextDirection%NUMBER_OF_DIRECTIONS;
-      nextColor = (nextColor)%currentNumberofColors;
-      nextNode = nextNode%NUMBER_OF_STARTING_NODES;
-    }
-  }
-
-  if(manualFireRipple && ripples[nextRipple].state == dead){
-    manualFireRipple = 0;
-    FireRipple(nextRipple++, directions[nextDirection++], nextColor++, starting_nodes[nextNode++]);
-    nextRipple = (nextRipple)%currentNumberofRipples;
-    nextDirection = (nextDirection)%NUMBER_OF_DIRECTIONS;
-    nextColor = (nextColor)%7;
-    nextNode = nextNode%NUMBER_OF_STARTING_NODES;
-  }
-
   OscWiFi.parse();
   ArduinoOTA.handle();            // Handle OTA updates
-
-
   WiFi_MainFunction();
+
+  Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
+
+  if((benchmark-lastRippleTime) > currentDelayBetweenRipples){
+    rippleFired_withinDelayWindow = 0; /* Delay has passed; we may now begin a new burst*/
+  }
   
-  // Fade all dots to create trails
-  
-  for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
-    for (int led = 0; led < 11; led++) {
-       ledHues[segment][led][1] *= currentDecay; //fade brightness
-      /*for (int i = 0; i < 3; i++) {
-          ledColors[strip][led][i] *= currentDecay;
-      }*/
+  if(!rippleFired_withinDelayWindow && loopFireRippleEnabled){ /* fire cyclic burst */
+    lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
+    rippleFired_withinDelayWindow = 1;
+    /* void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned long lifespan) */
+    for (int dir = 0; dir < NUMBER_OF_DIRECTIONS; dir++){
+      for (int node = 0; node < NUMBER_OF_STARTING_NODES; node++){  
+        FireRipple(nextRipple++, directions[dir], nextColor, starting_nodes[node], feisty, currentRippleLifeSpan);
+        if (nextRipple >= currentNumberofRipples) nextRipple = 0;
+      }
     }
+    nextColor++;
+    nextColor = (nextColor)%currentNumberofColors;
   }
-/*
-  for (int rip = 0; rip < NUMBER_OF_RIPPLES ; rip++){
-    ripples[rip].hue += 50; //rainbow effect
-  }*/
-  
-  //SetPixelColor all leds to ledColors
-  for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
-    for (int fromBottom = 0; fromBottom < 11; fromBottom++) {
-      int strip = ledAssignments[segment][0];
-      int led = round(fmap(
-                        fromBottom,
-                        0, 10,
-                        ledAssignments[segment][2], ledAssignments[segment][1]));
-      /*
-      Serial.println("--TESTING LEDCOLORS ASSIGNMENT--");
-      Serial.print("strip: ");
-      Serial.println(strip);
-      Serial.print("segment: ");
-      Serial.println(segment);
-      Serial.print("fromBottom: ");
-      Serial.println(fromBottom);
-      Serial.print("ledAssignments[segment][2]: ");
-      Serial.println(ledAssignments[segment][1]);
-      Serial.print("ledAssignments[segment][1]: ");
-      Serial.println(ledAssignments[segment][1]);
-      Serial.print("led: ");
-      Serial.println(led);
-      */
-      //strips[strip].setPixelColor(led, ledColors[segment][fromBottom][0], ledColors[segment][fromBottom][1], ledColors[segment][fromBottom][2]);
-      unsigned long color = strips[strip].ColorHSV(ledHues[segment][fromBottom][0], 255, ledHues[segment][fromBottom][1]);
-      strips[strip].setPixelColor(led, color);
+
+  if(manualFireRipple){ /* fire manual burst */
+    manualFireRipple = 0;
+
+    for (int dir = 0; dir < NUMBER_OF_DIRECTIONS; dir++){
+      for (int node = 0; node < NUMBER_OF_STARTING_NODES; node++){  
+        FireRipple(nextRipple++, directions[dir], nextColor, starting_nodes[node], alwaysTurnsRight, currentRippleLifeSpan);
+        if (nextRipple >= currentNumberofRipples) nextRipple = 0;
+      }
     }
+    
+    nextColor++;
+    nextColor = (nextColor)%currentNumberofColors;
+    
   }
 
-  for (int i = 0; i < currentNumberofRipples; i++) {
-    ripples[i].advance(ledHues);
-  }
-
-  //delay(10);
-  for (int strip = 0; strip < NUMBER_OF_STRIPS ; strip++){
-    strips[strip].show();
-  }
-
+  
   #ifdef ENABLE_DEBUGGING
-  Serial.print("Time between strip.show(): ");
-  Serial.println(millis() - benchmark);
+    Serial.print("Time spent executing one loop() in milliseconds: ");
+    Serial.println(millis() - benchmark);
   #endif
 
 }
