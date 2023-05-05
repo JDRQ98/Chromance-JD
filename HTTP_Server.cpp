@@ -76,9 +76,9 @@ String SendHTML(void) {
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
   ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 99]:</label>\n";
   ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
-  ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [5 - 2000]:</label>\n";
+  ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [5 - 20000]:</label>\n";
   ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
-  ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [500 - 10000]:</label>\n";
+  ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [500 - 20000]:</label>\n";
   ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(currentRippleLifeSpan) + "\"></div>\n";
   ptr += "<div><label for=\"currentNumberofColors\">Enter desired number of colors [3 - 25]:</label>\n";
   ptr += "<input id=\"currentNumberofColors\" name=\"currentNumberofColors\" value=\"" + String(currentNumberofColors) + "\"></div>\n";
@@ -129,7 +129,7 @@ void handle_PostRequest() {
       Serial.println("new NumberofRipples not valid; discarded.");
     }
     
-    if(DelayBetweenRipples >= 5 && DelayBetweenRipples < 2000){ /* new value received */
+    if(DelayBetweenRipples >= 5 && DelayBetweenRipples <= 20000){ /* new value received */
       Serial.print("received new DelayBetweenRipples from POST request: ");
       Serial.print(DelayBetweenRipples);
       Serial.print(". Previous value: ");
@@ -139,7 +139,7 @@ void handle_PostRequest() {
       Serial.println("new DelayBetweenRipples not valid; discarded.");
     }
     
-    if(RippleLifeSpan >= 500 && RippleLifeSpan <= 10000){ /* new value received */
+    if(RippleLifeSpan >= 500 && RippleLifeSpan <= 20000){ /* new value received */
       Serial.print("received new RippleLifeSpan from POST request: ");
       Serial.print(RippleLifeSpan);
       Serial.print(". Previous value: ");

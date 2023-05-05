@@ -15,6 +15,7 @@
 #include "mapping.h"
 
 #define NUMBER_OF_RIPPLES 100 /* for memory management: max number of ripples */
+#define ALL_DIRECTIONS -1 /* used as paramater 'dir' for FireRipple_AllXXX API's */
 
 enum rippleState {
   dead,

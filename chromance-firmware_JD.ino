@@ -20,8 +20,6 @@
 #define NUMBER_OF_STARTING_NODES 3
 
 /* Global Variables used by application */
-int directions[NUMBER_OF_DIRECTIONS] = {1,3,5};
-int starting_nodes[NUMBER_OF_STARTING_NODES] = {4, 11, 12};
 int nextRipple = 0;
 int nextDirection = 0;
 int nextColor = 0;
@@ -80,6 +78,82 @@ void setup() {
 }
 
 
+/* functions used by Application Software */
+int FireRipple_AllOddCubeNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan){
+  int currentRipple;
+  currentRipple = firstRipple;
+  for(int i = 0; i < numberOfCubeOddNodes; i++){
+    if( dir < 0 ){ /* fire in all directions */
+      FireRipple(currentRipple++, 1, color, cubeOddNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+      FireRipple(currentRipple++, 3, color, cubeOddNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+      FireRipple(currentRipple++, 5, color, cubeOddNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+    } else { /* fire only in one direction */
+      FireRipple(currentRipple++, dir, color, cubeOddNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+    }
+  }
+  return currentRipple;
+}
+
+int FireRipple_AllPairCubeNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan){
+  int currentRipple;
+  currentRipple = firstRipple;
+  for(int i = 0; i < numberOfCubePairNodes; i++){
+    if( dir < 0 ){ /* fire in all directions */
+      FireRipple(currentRipple++, 0, color, cubePairNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+      FireRipple(currentRipple++, 2, color, cubePairNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+      FireRipple(currentRipple++, 4, color, cubePairNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+    } else { /* fire only in one direction */
+      FireRipple(currentRipple++, dir, color, cubePairNodes[i], behavior, lifespan);
+      currentRipple = (currentRipple)%currentNumberofRipples;
+    }
+  }
+  return currentRipple;
+}
+
+int FireRipple_AllCubeNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan){
+  int currentRipple, endRipple;
+  if( dir < 0 ){ /* fire in all directions */
+    currentRipple = FireRipple_AllPairCubeNodes(firstRipple, -1, color, behavior, lifespan);
+    endRipple = FireRipple_AllOddCubeNodes(currentRipple, -1, color, behavior, lifespan);
+  } else { /* fire only in one direction */
+    currentRipple = FireRipple_AllPairCubeNodes(firstRipple, dir, color, behavior, lifespan);
+    endRipple = FireRipple_AllOddCubeNodes(currentRipple, dir, color, behavior, lifespan);
+  }
+  return endRipple;
+}
+
+void FireRipple_AllQuadNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan); /* to be implemented; must use nodeConnections */
+void FireRipple_AllBorderNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan); /* to be implemented; must use nodeConnections */
+int FireRipple_CenterNode(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan){
+  int currentRipple;
+  currentRipple = firstRipple;
+  if( dir < 0 ){ /* fire in all directions */
+    FireRipple(currentRipple++, 0, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+    FireRipple(currentRipple++, 1, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+    FireRipple(currentRipple++, 2, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+    FireRipple(currentRipple++, 3, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+    FireRipple(currentRipple++, 4, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+    FireRipple(currentRipple++, 5, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+  } else { /* fire only in one direction */
+    FireRipple(currentRipple++, dir, color, starburstNode, behavior, lifespan);
+    currentRipple = (currentRipple)%currentNumberofRipples;
+  }
+  return currentRipple;
+}
+
 void loop(){
   unsigned long benchmark = millis();
 
@@ -97,12 +171,9 @@ void loop(){
     lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
     rippleFired_withinDelayWindow = 1;
     /* void FireRipple(int ripple, int dir, int col, int node, byte behavior, unsigned long lifespan) */
-    for (int dir = 0; dir < NUMBER_OF_DIRECTIONS; dir++){
-      for (int node = 0; node < NUMBER_OF_STARTING_NODES; node++){  
-        FireRipple(nextRipple++, directions[dir], nextColor, starting_nodes[node], feisty, currentRippleLifeSpan);
-        if (nextRipple >= currentNumberofRipples) nextRipple = 0;
-      }
-    }
+    /* int FireRipple_AllCubeNodes(int firstRipple, int dir, int color, byte behavior, unsigned long lifespan) */
+    nextRipple = FireRipple_AllCubeNodes(nextRipple, ALL_DIRECTIONS, nextColor, angry, currentRippleLifeSpan);
+    nextRipple = FireRipple_CenterNode(nextRipple, ALL_DIRECTIONS, nextColor, angry, currentRippleLifeSpan);
     nextColor++;
     nextColor = (nextColor)%currentNumberofColors;
   }
@@ -110,13 +181,8 @@ void loop(){
   if(manualFireRipple){ /* fire manual burst */
     manualFireRipple = 0;
 
-    for (int dir = 0; dir < NUMBER_OF_DIRECTIONS; dir++){
-      for (int node = 0; node < NUMBER_OF_STARTING_NODES; node++){  
-        FireRipple(nextRipple++, directions[dir], nextColor, starting_nodes[node], alwaysTurnsRight, currentRippleLifeSpan);
-        if (nextRipple >= currentNumberofRipples) nextRipple = 0;
-      }
-    }
-    
+    nextRipple = FireRipple_AllCubeNodes(nextRipple, ALL_DIRECTIONS, nextColor, alwaysTurnsRight, currentRippleLifeSpan);
+    nextRipple = FireRipple_CenterNode(nextRipple, ALL_DIRECTIONS, nextColor, alwaysTurnsRight, currentRippleLifeSpan);
     nextColor++;
     nextColor = (nextColor)%currentNumberofColors;
     

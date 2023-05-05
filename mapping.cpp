@@ -108,8 +108,11 @@ int QuadNodes[6] = {1, 2, 8, 10, 16, 17};
 
 // Cube nodes link three equiangular segments
 // Firing ripples that always turn in one direction will draw a cube
-int numberOfCubeNodes = 6;
-int cubeNodes[6] = {6, 7, 9, 11, 12, 14};
+int numberOfCubePairNodes = 3;
+int cubePairNodes[3] = {6, 7, 14};
+
+int numberOfCubeOddNodes = 3;
+int cubeOddNodes[3] = {4, 11, 12};
 
 // Firing ripples that always turn in one direction will draw a starburst
 int starburstNode = 9;

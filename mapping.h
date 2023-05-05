@@ -29,8 +29,10 @@ extern int numberOfBorderNodes;
 extern int borderNodes[6];
 extern int numberOfQuadNodes;
 extern int QuadNodes[6];
-extern int numberOfCubeNodes;
-extern int cubeNodes[6];
+extern int numberOfCubePairNodes;
+extern int cubePairNodes[3];
+extern int numberOfCubeOddNodes;
+extern int cubeOddNodes[3];
 extern int starburstNode;
 
 #endif
