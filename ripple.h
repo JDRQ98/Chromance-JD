@@ -34,9 +34,17 @@ enum rippleBehavior {
 
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
-bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan);
 void Strips_init();
 void Ripple_MainFunction();
+
+/* functions used by Application Software */
+bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
 
 class Ripple {
   public:
