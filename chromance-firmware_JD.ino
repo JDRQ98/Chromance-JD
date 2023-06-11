@@ -87,19 +87,19 @@ void loop(){
     DelayPeriodActive = 1;
 
     if(loop_CubeFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed);
+      rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
     if(loop_CenterFireRippleEnabled){
-      rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed);
+      rippleFired_return |= FireRipple_CenterNode(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
     if(loop_QuadFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllQuadNodes(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed);
+      rippleFired_return |= FireRipple_AllQuadNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
     if(loop_BorderFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed);
+      rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
     
     if (rippleFired_return){ /* ripples were fired during this window */
@@ -114,8 +114,9 @@ void loop(){
     manualFireRipple = 0;
     rippleFired_return = 0;
     
-    rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, ALL_DIRECTIONS, nextColor, alwaysTurnsRight, currentRippleLifeSpan, currentRippleSpeed);
-    rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, alwaysTurnsRight, currentRippleLifeSpan, currentRippleSpeed);
+    rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, preferLeft, 2);
+    rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, preferRight, 2);
+    
     
     if (rippleFired_return){ /* ripples were fired during this window */
       nextColor++; 

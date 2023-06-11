@@ -32,19 +32,29 @@ enum rippleBehavior {
   alwaysTurnsLeft = 4
 };
 
+enum directionBias {
+  noPreference = 0,
+  preferLeft = 1,
+  preferRight = 2
+};
+
+#define NO_NODE_LIMIT 0xFFFF
+
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
 void Strips_init();
 void Ripple_MainFunction();
 
 /* functions used by Application Software */
-bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
-bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed);
+bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 
 class Ripple {
   public:
@@ -56,6 +66,9 @@ class Ripple {
     rippleState state = dead;
     unsigned long color;
     unsigned short hue;
+    unsigned short hueDeltaPerTick; /* hue is incremented by this amount every time advance is called; set to 0 for solid color */
+    unsigned short nodeLimit = NO_NODE_LIMIT; /* hard-limit on the number of nodes to be reached by ripple */
+    directionBias rippleBias = noPreference; /* only relevant for ripples with behavior != always right or always left */
     int currentLed = 0;
 
     /*
@@ -65,7 +78,7 @@ class Ripple {
     int position[2];
 
     // Place the Ripple in a node
-    void start(byte n, byte d, unsigned long c, float s, unsigned long l, byte b, unsigned short h) {
+    void start(byte n, byte d, unsigned long c, float s, unsigned long l, byte b, unsigned short h, unsigned short hDelta, directionBias bias, unsigned short nLimit) {
       position[0] = n; /* starting node */
       position[1] = d; /* direction */
       color = c;
@@ -73,6 +86,9 @@ class Ripple {
       speed = s;
       lifespan = l;
       behavior = b;
+      hueDeltaPerTick = hDelta;
+      rippleBias = bias;
+      nodeLimit = nLimit;
 
       birthday = millis();
       pressure = 0;
@@ -100,7 +116,7 @@ class Ripple {
 
     void advance(short ledColors[NUMBER_OF_SEGMENTS][11][2]) {
       unsigned long age = millis() - birthday;
-      //hue += 150;
+      hue += hueDeltaPerTick;
       if (state == dead)
         return;
 #ifdef DEBUG_PRESSURE
@@ -184,7 +200,9 @@ class Ripple {
 #ifdef DEBUG_ADVANCEMENT
                         Serial.println("  Turning left or right at random");
 #endif
-                        newDirection = random(2) ? wideLeft : wideRight;
+                        if(rippleBias == preferLeft) newDirection = wideLeft;
+                        else if(rippleBias == preferRight) newDirection = wideRight;
+                        else newDirection = random(2) ? wideLeft : wideRight;
                       }
                       else if (leftConnection >= 0) {
 #ifdef DEBUG_ADVANCEMENT
@@ -214,8 +232,11 @@ class Ripple {
 #ifdef DEBUG_ADVANCEMENT
                         Serial.println("  Turning left or right at random");
 #endif
+                        if(rippleBias == preferLeft) newDirection = sharpLeft;
+                        else if(rippleBias == preferRight) newDirection = sharpRight;
+                        else newDirection = random(2) ? sharpLeft : sharpRight;
                         //newDirection = random(2) ? sharpLeft : sharpRight;
-                        newDirection = sharpRight;
+                        //newDirection = sharpRight;
                       }
                       else if (leftConnection >= 0) {
 #ifdef DEBUG_ADVANCEMENT
@@ -317,6 +338,7 @@ class Ripple {
                 Serial.println(position[0]);
 #endif
                 // Enter the new node.
+                nodeLimit--;
                 int segment = position[0];
                 position[0] = segmentConnections[position[0]][0]; /* assign position [0] to node we just enterred */
                 for (int i = 0; i < 6; i++) {
@@ -355,6 +377,7 @@ class Ripple {
                 Serial.println(position[0]);
 #endif
                 // Enter the new node.
+                nodeLimit--;
                 int segment = position[0];
                 position[0] = segmentConnections[position[0]][1];
                 for (int i = 0; i < 6; i++) {
@@ -409,7 +432,7 @@ class Ripple {
       Serial.println(pressure);
 #endif
 
-      if (lifespan && age >= lifespan) {
+      if ( (lifespan && age >= lifespan) || (nodeLimit == 0) ){
         // We dead
 #ifdef DEBUG_ADVANCEMENT
         Serial.println("  Lifespan is up! Ripple is dead.");

@@ -28,13 +28,16 @@ int loop_CenterFireRippleEnabled = 1;
 int loop_CubeFireRippleEnabled = 0;
 int loop_QuadFireRippleEnabled = 0;
 int loop_BorderFireRippleEnabled = 0;
+int RainbowEffectEnabled = 0;
 int manualFireRipple = 0;
 int currentNumberofRipples = NUMBER_OF_RIPPLES;
 int currentNumberofColors = 7;
 int currentBehavior = feisty;
+int currentDirection = ALL_DIRECTIONS;
 short currentDelayBetweenRipples = 3000; /* in milliseconds */
+short currentRainbowDeltaPerTick = 0; /* units: hue */
 unsigned long currentRippleLifeSpan = 3000; /* in milliseconds */
-float currentRippleSpeed = 0.25; 
+float currentRippleSpeed = 0.5; 
 float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 
 String SendHTML(void) {
@@ -101,6 +104,12 @@ String SendHTML(void) {
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"border-auto-ripple-checkbox\" name=\"border-auto-ripple\" value=\"1\" onchange=\"toggleBorderAutoRipple(this)\"><label for=\"border-auto-ripple-checkbox\">Enable Ripples in Border Nodes</label></p>\n";
   }
+  /* Display ON/OFF checkbox for RainbowEffectEnabled */
+  if (RainbowEffectEnabled) {
+    ptr += "<p><input type=\"checkbox\" id=\"Rainbow-Effect-checkbox\" name=\"rainbow-ripple\" value=\"1\" onchange=\"toggleRainbowEffect(this)\" checked><label for=\"Rainbow-Effect-checkbox\">Enable Rainbow effect</label></p>\n";
+  } else {
+    ptr += "<p><input type=\"checkbox\" id=\"Rainbow-Effect-checkbox\" name=\"rainbow-ripple\" value=\"1\" onchange=\"toggleRainbowEffect(this)\"><label for=\"Rainbow-Effect-checkbox\">Enable Rainbow effect</label></p>\n";
+  }
   
   /* Text input for number of ripples */
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
@@ -108,14 +117,18 @@ String SendHTML(void) {
   ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
   ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [1 - 20000]:</label>\n";
   ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
+  ptr += "<div><label for=\"currentRainbowDeltaPerTick\">Enter rainbow delta per tick in hue [1 - 20000]:</label>\n";
+  ptr += "<input id=\"currentRainbowDeltaPerTick\" name=\"currentRainbowDeltaPerTick\" value=\"" + String(currentRainbowDeltaPerTick) + "\"></div>\n";
   ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [1 - 20000]:</label>\n";
   ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(currentRippleLifeSpan) + "\"></div>\n";
   ptr += "<div><label for=\"currentRippleSpeed\">Enter ripple speed (float) [0.01 - 10]:</label>\n";
   ptr += "<input id=\"currentRippleSpeed\" name=\"currentRippleSpeed\" value=\"" + String(currentRippleSpeed, 2) + "\"></div>\n";
-  ptr += "<div><label for=\"currentNumberofColors\">Enter desired number of colors [3 - 25]:</label>\n";
+  ptr += "<div><label for=\"currentNumberofColors\">Enter desired number of colors [1 - 25]:</label>\n";
   ptr += "<input id=\"currentNumberofColors\" name=\"currentNumberofColors\" value=\"" + String(currentNumberofColors) + "\"></div>\n";
   ptr += "<div><label for=\"currentBehavior\">Enter desired behavior [0-2 = less to more aggro; 3 = alwaysRight; 4 = alwaysLeft]:</label>\n";
   ptr += "<input id=\"currentBehavior\" name=\"currentBehavior\" value=\"" + String(currentBehavior) + "\"></div>\n";
+  ptr += "<div><label for=\"currentDirection\">Enter ripple direction [-1 = All directions; 0-5 = direction clockwise starting at 12:00; 6 = random direction]:</label>\n";
+  ptr += "<input id=\"currentDirection\" name=\"currentDirection\" value=\"" + String(currentDirection) + "\"></div>\n";
   ptr += "<div><label for=\"currentDecay\">Enter decay per tick [0.5 - 0.995]:</label>\n";
   ptr += "<input id=\"currentDecay\" name=\"currentDecay\" value=\"" + String(currentDecay, 3) + "\"></div>\n";
   ptr += "<div><button type=\"submit\">Submit</button></div>\n";
@@ -172,6 +185,16 @@ String SendHTML(void) {
     ptr += "fetch('/BorderFireRippleEnabled/off');}\n";
   ptr += "}</script>\n";
 
+   /* for Rainbow effect Enable */
+  ptr += "<script> function toggleRainbowEffect(checkbox)\n";
+    ptr += "{if (checkbox.checked){\n";
+    // checkbox is checked, turn on automatic ripples
+    ptr += "fetch('/RainbowEffectEnabled/on');}\n";
+    ptr += "else{\n";
+    // checkbox is unchecked, turn off automatic ripples
+    ptr += "fetch('/RainbowEffectEnabled/off');}\n";
+  ptr += "}</script>\n";
+
 
   
   ptr += "</body></html>\n";
@@ -192,11 +215,13 @@ void handle_PostRequest() {
 
     int NumberofRipples = server.arg(0).toInt();
     short DelayBetweenRipples = server.arg(1).toInt();
-    unsigned long RippleLifeSpan = server.arg(2).toInt();
-    float RippleSpeed = server.arg(3).toFloat();
-    int NumberofColors = server.arg(4).toInt();
-    int Behavior = server.arg(5).toInt();
-    float Decay = server.arg(6).toFloat();
+    short RainbowDeltaPerTick = server.arg(2).toInt();
+    unsigned long RippleLifeSpan = server.arg(3).toInt();
+    float RippleSpeed = server.arg(4).toFloat();
+    int NumberofColors = server.arg(5).toInt();
+    int Behavior = server.arg(6).toInt();
+    int Direction = server.arg(7).toInt();
+    float Decay = server.arg(8).toFloat();
     
     if(NumberofRipples > 0 && NumberofRipples <= NUMBER_OF_RIPPLES){ /* new value received */
       Serial.print("received new NumberofRipples from POST request: ");
@@ -216,6 +241,16 @@ void handle_PostRequest() {
       currentDelayBetweenRipples = DelayBetweenRipples;
     } else {
       Serial.println("new DelayBetweenRipples not valid; discarded.");
+    }
+
+    if(RainbowDeltaPerTick >= 1 && RainbowDeltaPerTick <= 20000){ /* new value received */
+      Serial.print("received new RainbowDeltaPerTick from POST request: ");
+      Serial.print(RainbowDeltaPerTick);
+      Serial.print(". Previous value: ");
+      Serial.println(currentRainbowDeltaPerTick);
+      currentRainbowDeltaPerTick = RainbowDeltaPerTick;
+    } else {
+      Serial.println("new RainbowDeltaPerTick not valid; discarded.");
     }
     
     if(RippleLifeSpan >= 1 && RippleLifeSpan <= 20000){ /* new value received */
@@ -238,7 +273,7 @@ void handle_PostRequest() {
       Serial.println("new Ripple Speed not valid; discarded.");
     }
 
-    if(NumberofColors >= 3 && NumberofColors <= 25){ /* new value received */
+    if(NumberofColors >= 1 && NumberofColors <= 25){ /* new value received */
       Serial.print("received new NumberofColors from POST request: ");
       Serial.print(NumberofColors);
       Serial.print(". Previous value: ");
@@ -256,6 +291,16 @@ void handle_PostRequest() {
       currentBehavior = Behavior;
     } else {
       Serial.println("new Behavior not valid; discarded.");
+    }
+
+    if(Direction >= -1 && Direction <= 6){ /* new value received */
+      Serial.print("received new Direction from POST request: ");
+      Serial.print(Direction);
+      Serial.print(". Previous value: ");
+      Serial.println(currentDirection);
+      currentDirection = Direction;
+    } else {
+      Serial.println("new Direction not valid; discarded.");
     }
 
     if(Decay >= 0.5 && Decay <= 0.996){ /* new value received */
@@ -334,6 +379,16 @@ void handle_BorderFireRippleEnabled_Off() {
   loop_BorderFireRippleEnabled = 0;
 }
 
+void handle_RainbowEffectEnabled_On() {
+  Serial.println("Border Automatic ripples: ON");
+  RainbowEffectEnabled = 1;
+}
+
+void handle_RainbowEffectEnabled_Off() {
+  Serial.println("Border Automatic ripples: OFF");
+  RainbowEffectEnabled = 0;
+}
+
 /* to be called periodically inside loop() */
 void WiFi_MainFunction(void){
   server.handleClient();
@@ -364,6 +419,8 @@ void WiFi_init(void){
   server.on("/QuadFireRippleEnabled/on", handle_QuadFireRippleEnabled_On);
   server.on("/BorderFireRippleEnabled/off", handle_BorderFireRippleEnabled_Off);
   server.on("/BorderFireRippleEnabled/on", handle_BorderFireRippleEnabled_On);
+  server.on("/RainbowEffectEnabled/off", handle_RainbowEffectEnabled_Off);
+  server.on("/RainbowEffectEnabled/on", handle_RainbowEffectEnabled_On);
   server.on("/updateInternalVariables", HTTP_POST, handle_PostRequest); 
   
   /* Begin Server */
