@@ -15,7 +15,10 @@
 #include "mapping.h"
 
 #define NUMBER_OF_RIPPLES 100 /* for memory management: max number of ripples */
-#define ALL_DIRECTIONS -1 /* used as paramater 'dir' for FireRipple_AllXXX API's */
+#define NUMBER_OF_EFFECTS 4 /* for random effect function*/
+
+#define ALL_DIRECTIONS -1 /* used as paramater 'dir' for Bulk FireRipple API's */
+#define NO_NODE_LIMIT 0xFFFF /* used as parameter 'nodeLimit' for FireRipple API's*/
 
 enum rippleState {
   dead,
@@ -35,10 +38,14 @@ enum rippleBehavior {
 enum directionBias {
   noPreference = 0,
   preferLeft = 1,
-  preferRight = 2
+  preferLeftOnce = 2,
+  preferLeftTwice = 3,
+  preferRight = 4,
+  preferRightOnce = 5,
+  preferRightTwice = 6
 };
 
-#define NO_NODE_LIMIT 0xFFFF
+
 
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
@@ -49,12 +56,17 @@ void Ripple_MainFunction();
 bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+/* bulk fire ripples */
 bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+/* special effects */
+bool FireEffect_Star(int* firstRipple, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta);
+bool FireEffect_CenterNode_QuadShard(int *firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+bool FireEffect_Random(int* firstRipple, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 
 class Ripple {
   public:
@@ -200,9 +212,14 @@ class Ripple {
 #ifdef DEBUG_ADVANCEMENT
                         Serial.println("  Turning left or right at random");
 #endif
-                        if(rippleBias == preferLeft) newDirection = wideLeft;
-                        else if(rippleBias == preferRight) newDirection = wideRight;
-                        else newDirection = random(2) ? wideLeft : wideRight;
+                        if (rippleBias == noPreference) newDirection = random(2) ? wideLeft : wideRight;
+                        else if(rippleBias >= noPreference && rippleBias <= preferLeftTwice) newDirection = wideLeft;
+                        else if(rippleBias >= preferLeftTwice && rippleBias <= preferRightTwice) newDirection = wideRight;
+                        
+                        if (rippleBias == preferLeftOnce) rippleBias = noPreference;
+                        if (rippleBias == preferLeftTwice) rippleBias = preferLeftOnce;
+                        if (rippleBias == preferRightOnce) rippleBias = noPreference;
+                        if (rippleBias == preferRightTwice) rippleBias = preferRightOnce;
                       }
                       else if (leftConnection >= 0) {
 #ifdef DEBUG_ADVANCEMENT
@@ -232,11 +249,14 @@ class Ripple {
 #ifdef DEBUG_ADVANCEMENT
                         Serial.println("  Turning left or right at random");
 #endif
-                        if(rippleBias == preferLeft) newDirection = sharpLeft;
-                        else if(rippleBias == preferRight) newDirection = sharpRight;
-                        else newDirection = random(2) ? sharpLeft : sharpRight;
-                        //newDirection = random(2) ? sharpLeft : sharpRight;
-                        //newDirection = sharpRight;
+                        if (rippleBias == noPreference) newDirection = random(2) ? sharpLeft : sharpRight;
+                        else if(rippleBias >= noPreference && rippleBias <= preferLeftTwice) newDirection = sharpLeft;
+                        else if(rippleBias >= preferLeftTwice && rippleBias <= preferRightTwice) newDirection = sharpRight;
+                        
+                        if (rippleBias == preferLeftOnce) rippleBias = noPreference;
+                        if (rippleBias == preferLeftTwice) rippleBias = preferLeftOnce;
+                        if (rippleBias == preferRightOnce) rippleBias = noPreference;
+                        if (rippleBias == preferRightTwice) rippleBias = preferRightOnce;
                       }
                       else if (leftConnection >= 0) {
 #ifdef DEBUG_ADVANCEMENT

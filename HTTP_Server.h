@@ -9,7 +9,7 @@ extern int loop_CenterFireRippleEnabled;
 extern int loop_CubeFireRippleEnabled;
 extern int loop_QuadFireRippleEnabled;
 extern int loop_BorderFireRippleEnabled;
-extern int RainbowEffectEnabled;
+extern int loop_RandomEffectEnabled;
 extern int manualFireRipple;
 extern int currentNumberofRipples;
 extern int currentNumberofColors;

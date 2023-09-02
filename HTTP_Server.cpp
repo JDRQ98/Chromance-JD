@@ -24,18 +24,18 @@ const long timeout = 2000;
 
 // Auxiliar variables to store the current output state
 int loop_MasterFireRippleEnabled = 1;
-int loop_CenterFireRippleEnabled = 1;
+int loop_CenterFireRippleEnabled = 0;
 int loop_CubeFireRippleEnabled = 0;
 int loop_QuadFireRippleEnabled = 0;
 int loop_BorderFireRippleEnabled = 0;
-int RainbowEffectEnabled = 0;
+int loop_RandomEffectEnabled = 1;
 int manualFireRipple = 0;
 int currentNumberofRipples = NUMBER_OF_RIPPLES;
 int currentNumberofColors = 7;
 int currentBehavior = feisty;
 int currentDirection = ALL_DIRECTIONS;
 short currentDelayBetweenRipples = 3000; /* in milliseconds */
-short currentRainbowDeltaPerTick = 0; /* units: hue */
+short currentRainbowDeltaPerTick = 200; /* units: hue */
 unsigned long currentRippleLifeSpan = 3000; /* in milliseconds */
 float currentRippleSpeed = 0.5; 
 float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
@@ -104,11 +104,11 @@ String SendHTML(void) {
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"border-auto-ripple-checkbox\" name=\"border-auto-ripple\" value=\"1\" onchange=\"toggleBorderAutoRipple(this)\"><label for=\"border-auto-ripple-checkbox\">Enable Ripples in Border Nodes</label></p>\n";
   }
-  /* Display ON/OFF checkbox for RainbowEffectEnabled */
-  if (RainbowEffectEnabled) {
-    ptr += "<p><input type=\"checkbox\" id=\"Rainbow-Effect-checkbox\" name=\"rainbow-ripple\" value=\"1\" onchange=\"toggleRainbowEffect(this)\" checked><label for=\"Rainbow-Effect-checkbox\">Enable Rainbow effect</label></p>\n";
+  /* Display ON/OFF checkbox for loop_RandomEffectEnabled */
+  if (loop_RandomEffectEnabled) {
+    ptr += "<p><input type=\"checkbox\" id=\"Random-Effect-checkbox\" name=\"Random-ripple\" value=\"1\" onchange=\"toggleRandomEffect(this)\" checked><label for=\"Random-Effect-checkbox\">Enable Random effect</label></p>\n";
   } else {
-    ptr += "<p><input type=\"checkbox\" id=\"Rainbow-Effect-checkbox\" name=\"rainbow-ripple\" value=\"1\" onchange=\"toggleRainbowEffect(this)\"><label for=\"Rainbow-Effect-checkbox\">Enable Rainbow effect</label></p>\n";
+    ptr += "<p><input type=\"checkbox\" id=\"Random-Effect-checkbox\" name=\"Random-ripple\" value=\"1\" onchange=\"toggleRandomEffect(this)\"><label for=\"Random-Effect-checkbox\">Enable Random effect</label></p>\n";
   }
   
   /* Text input for number of ripples */
@@ -185,14 +185,14 @@ String SendHTML(void) {
     ptr += "fetch('/BorderFireRippleEnabled/off');}\n";
   ptr += "}</script>\n";
 
-   /* for Rainbow effect Enable */
-  ptr += "<script> function toggleRainbowEffect(checkbox)\n";
+   /* for Random effect Enable */
+  ptr += "<script> function toggleRandomEffect(checkbox)\n";
     ptr += "{if (checkbox.checked){\n";
     // checkbox is checked, turn on automatic ripples
-    ptr += "fetch('/RainbowEffectEnabled/on');}\n";
+    ptr += "fetch('/RandomEffectEnabled/on');}\n";
     ptr += "else{\n";
     // checkbox is unchecked, turn off automatic ripples
-    ptr += "fetch('/RainbowEffectEnabled/off');}\n";
+    ptr += "fetch('/RandomEffectEnabled/off');}\n";
   ptr += "}</script>\n";
 
 
@@ -379,14 +379,14 @@ void handle_BorderFireRippleEnabled_Off() {
   loop_BorderFireRippleEnabled = 0;
 }
 
-void handle_RainbowEffectEnabled_On() {
+void handle_RandomEffectEnabled_On() {
   Serial.println("Border Automatic ripples: ON");
-  RainbowEffectEnabled = 1;
+  loop_RandomEffectEnabled = 1;
 }
 
-void handle_RainbowEffectEnabled_Off() {
+void handle_RandomEffectEnabled_Off() {
   Serial.println("Border Automatic ripples: OFF");
-  RainbowEffectEnabled = 0;
+  loop_RandomEffectEnabled = 0;
 }
 
 /* to be called periodically inside loop() */
@@ -419,8 +419,8 @@ void WiFi_init(void){
   server.on("/QuadFireRippleEnabled/on", handle_QuadFireRippleEnabled_On);
   server.on("/BorderFireRippleEnabled/off", handle_BorderFireRippleEnabled_Off);
   server.on("/BorderFireRippleEnabled/on", handle_BorderFireRippleEnabled_On);
-  server.on("/RainbowEffectEnabled/off", handle_RainbowEffectEnabled_Off);
-  server.on("/RainbowEffectEnabled/on", handle_RainbowEffectEnabled_On);
+  server.on("/RandomEffectEnabled/off", handle_RandomEffectEnabled_Off);
+  server.on("/RandomEffectEnabled/on", handle_RandomEffectEnabled_On);
   server.on("/updateInternalVariables", HTTP_POST, handle_PostRequest); 
   
   /* Begin Server */

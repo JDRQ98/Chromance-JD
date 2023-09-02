@@ -1,5 +1,5 @@
 /*
-   Chromance wall hexagon source (emotion controlled w/ EmotiBit)
+   Chromance wall hexagon source
    Partially cribbed from the DotStar example
    I smooshed in the ESP32 BasicOTA sketch, too
 
@@ -31,8 +31,9 @@ unsigned long lastRippleTime = 0;
 void setup() {
   Serial.begin(115200);
 
-  WiFi_init();
   Strips_init();
+  WiFi_init();
+
  
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
@@ -86,6 +87,11 @@ void loop(){
     lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
     DelayPeriodActive = 1;
 
+
+    if(loop_RandomEffectEnabled){
+      rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, NO_NODE_LIMIT);
+    }
+
     if(loop_CubeFireRippleEnabled){
       rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
@@ -102,32 +108,27 @@ void loop(){
       rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
     
-    if (rippleFired_return){ /* ripples were fired during this window */
-      nextColor++; 
-      nextColor = (nextColor)%currentNumberofColors;
-      rippleFired_return = 0;
-    }
+    
 
   }
+
 
   if(manualFireRipple){ /* fire manual burst */
     manualFireRipple = 0;
     rippleFired_return = 0;
     
-    rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, preferLeft, 2);
-    rippleFired_return |= FireRipple_CenterNode(&nextRipple, ALL_DIRECTIONS, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, preferRight, 2);
-    
-    
-    if (rippleFired_return){ /* ripples were fired during this window */
-      nextColor++; 
-      nextColor = (nextColor)%currentNumberofColors;
-      rippleFired_return = 0;
-    }
+    rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, NO_NODE_LIMIT);
     
   }
 
-  
-  #ifdef ENABLE_DEBUGGING
+  if (rippleFired_return)
+  { /* ripples were fired during this window */
+    nextColor++;
+    nextColor = (nextColor) % currentNumberofColors;
+    rippleFired_return = 0;
+  }
+
+#ifdef ENABLE_DEBUGGING
     Serial.print("Time spent executing one loop() in milliseconds: ");
     Serial.println(millis() - benchmark);
   #endif
