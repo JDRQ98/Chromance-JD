@@ -6,6 +6,7 @@ using namespace std;
 
 #include "HTTP_Server.h" 
 #include "ripple.h"
+#include "EEP.h"
 
 
 // WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
@@ -23,22 +24,24 @@ unsigned long previousTime = 0;
 const long timeout = 2000;
 
 // Auxiliar variables to store the current output state
-int loop_MasterFireRippleEnabled = 1;
-int loop_CenterFireRippleEnabled = 0;
-int loop_CubeFireRippleEnabled = 0;
-int loop_QuadFireRippleEnabled = 0;
-int loop_BorderFireRippleEnabled = 0;
-int loop_RandomEffectEnabled = 1;
-int manualFireRipple = 0;
-int currentNumberofRipples = NUMBER_OF_RIPPLES;
-int currentNumberofColors = 7;
-int currentBehavior = feisty;
-int currentDirection = ALL_DIRECTIONS;
-short currentDelayBetweenRipples = 3000; /* in milliseconds */
-short currentRainbowDeltaPerTick = 200; /* units: hue */
-unsigned long currentRippleLifeSpan = 3000; /* in milliseconds */
-float currentRippleSpeed = 0.5; 
-float currentDecay = 0.985;  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
+GlobalParameters_struct GlobalParameters = { 
+  .loop_MasterFireRippleEnabled = 1,
+  .loop_CenterFireRippleEnabled = 0,
+  .loop_CubeFireRippleEnabled = 0,
+  .loop_QuadFireRippleEnabled = 0,
+  .loop_BorderFireRippleEnabled = 0,
+  .loop_RandomEffectEnabled = 1,
+  .currentNumberofRipples = NUMBER_OF_RIPPLES,
+  .currentNumberofColors = 7,
+  .currentBehavior = feisty,
+  .currentDirection = ALL_DIRECTIONS,
+  .currentDelayBetweenRipples = 3000, /* in milliseconds */
+  .currentRainbowDeltaPerTick = 200, /* units: hue */
+  .currentRippleLifeSpan = 3000, /* in milliseconds */
+  .currentRippleSpeed = 0.5, 
+  .currentDecay = 0.985,  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
+};
+boolean manualFireRipple = 0;
 
 String SendHTML(void) {
   // Display the HTML web page
@@ -75,37 +78,37 @@ String SendHTML(void) {
   ptr += "<p><a href=\"/ManualRipple\"><button class=\"button\">Fire!</button></a></p>\n";
   
   /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
-  if (loop_MasterFireRippleEnabled) {
+  if (GlobalParameters.loop_MasterFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\" checked><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\"><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
   }
   /* Display ON/OFF checkbox for loop_CenterFireRippleEnabled */
-  if (loop_CenterFireRippleEnabled) {
+  if (GlobalParameters.loop_CenterFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"center-auto-ripple-checkbox\" name=\"center-auto-ripple\" value=\"1\" onchange=\"toggleCenterAutoRipple(this)\" checked><label for=\"center-auto-ripple-checkbox\">Enable Ripples in Center Node</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"center-auto-ripple-checkbox\" name=\"center-auto-ripple\" value=\"1\" onchange=\"toggleCenterAutoRipple(this)\"><label for=\"center-auto-ripple-checkbox\">Enable Ripples in Center Node</label></p>\n";
   }
   /* Display ON/OFF checkbox for loop_CubeFireRippleEnabled */
-  if (loop_CubeFireRippleEnabled) {
+  if (GlobalParameters.loop_CubeFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"cube-auto-ripple-checkbox\" name=\"cube-auto-ripple\" value=\"1\" onchange=\"toggleCubeAutoRipple(this)\" checked><label for=\"cube-auto-ripple-checkbox\">Enable Ripples in Cube Nodes</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"cube-auto-ripple-checkbox\" name=\"cube-auto-ripple\" value=\"1\" onchange=\"toggleCubeAutoRipple(this)\"><label for=\"cube-auto-ripple-checkbox\">Enable Ripples in Cube Nodes</label></p>\n";
   }
   /* Display ON/OFF checkbox for loop_QuadFireRippleEnabled */
-  if (loop_QuadFireRippleEnabled) {
+  if (GlobalParameters.loop_QuadFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"quad-auto-ripple-checkbox\" name=\"quad-auto-ripple\" value=\"1\" onchange=\"toggleQuadAutoRipple(this)\" checked><label for=\"quad-auto-ripple-checkbox\">Enable Ripples in Quad Nodes</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"quad-auto-ripple-checkbox\" name=\"quad-auto-ripple\" value=\"1\" onchange=\"toggleQuadAutoRipple(this)\"><label for=\"quad-auto-ripple-checkbox\">Enable Ripples in Quad Nodes</label></p>\n";
   }
   /* Display ON/OFF checkbox for loop_BorderFireRippleEnabled */
-  if (loop_BorderFireRippleEnabled) {
+  if (GlobalParameters.loop_BorderFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"border-auto-ripple-checkbox\" name=\"border-auto-ripple\" value=\"1\" onchange=\"toggleBorderAutoRipple(this)\" checked><label for=\"border-auto-ripple-checkbox\">Enable Ripples in Border Nodes</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"border-auto-ripple-checkbox\" name=\"border-auto-ripple\" value=\"1\" onchange=\"toggleBorderAutoRipple(this)\"><label for=\"border-auto-ripple-checkbox\">Enable Ripples in Border Nodes</label></p>\n";
   }
   /* Display ON/OFF checkbox for loop_RandomEffectEnabled */
-  if (loop_RandomEffectEnabled) {
+  if (GlobalParameters.loop_RandomEffectEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"Random-Effect-checkbox\" name=\"Random-ripple\" value=\"1\" onchange=\"toggleRandomEffect(this)\" checked><label for=\"Random-Effect-checkbox\">Enable Random effect</label></p>\n";
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"Random-Effect-checkbox\" name=\"Random-ripple\" value=\"1\" onchange=\"toggleRandomEffect(this)\"><label for=\"Random-Effect-checkbox\">Enable Random effect</label></p>\n";
@@ -114,25 +117,32 @@ String SendHTML(void) {
   /* Text input for number of ripples */
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
   ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 99]:</label>\n";
-  ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String(currentNumberofRipples) + "\"></div>\n";
+  ptr += "<input id=\"NumberofRipples\" name=\"NumberofRipples\" value=\"" + String((int) GlobalParameters.currentNumberofRipples) + "\"></div>\n";
   ptr += "<div><label for=\"currentDelayBetweenRipples\">Enter delay between ripples in ms [1 - 20000]:</label>\n";
-  ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(currentDelayBetweenRipples) + "\"></div>\n";
+  ptr += "<input id=\"currentDelayBetweenRipples\" name=\"currentDelayBetweenRipples\" value=\"" + String(GlobalParameters.currentDelayBetweenRipples) + "\"></div>\n";
   ptr += "<div><label for=\"currentRainbowDeltaPerTick\">Enter rainbow delta per tick in hue [1 - 20000]:</label>\n";
-  ptr += "<input id=\"currentRainbowDeltaPerTick\" name=\"currentRainbowDeltaPerTick\" value=\"" + String(currentRainbowDeltaPerTick) + "\"></div>\n";
+  ptr += "<input id=\"currentRainbowDeltaPerTick\" name=\"currentRainbowDeltaPerTick\" value=\"" + String(GlobalParameters.currentRainbowDeltaPerTick) + "\"></div>\n";
   ptr += "<div><label for=\"currentRippleLifeSpan\">Enter ripple life span in ms [1 - 20000]:</label>\n";
-  ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(currentRippleLifeSpan) + "\"></div>\n";
+  ptr += "<input id=\"currentRippleLifeSpan\" name=\"currentRippleLifeSpan\" value=\"" + String(GlobalParameters.currentRippleLifeSpan) + "\"></div>\n";
   ptr += "<div><label for=\"currentRippleSpeed\">Enter ripple speed (float) [0.01 - 10]:</label>\n";
-  ptr += "<input id=\"currentRippleSpeed\" name=\"currentRippleSpeed\" value=\"" + String(currentRippleSpeed, 2) + "\"></div>\n";
+  ptr += "<input id=\"currentRippleSpeed\" name=\"currentRippleSpeed\" value=\"" + String(GlobalParameters.currentRippleSpeed, 2) + "\"></div>\n";
   ptr += "<div><label for=\"currentNumberofColors\">Enter desired number of colors [1 - 25]:</label>\n";
-  ptr += "<input id=\"currentNumberofColors\" name=\"currentNumberofColors\" value=\"" + String(currentNumberofColors) + "\"></div>\n";
+  ptr += "<input id=\"currentNumberofColors\" name=\"currentNumberofColors\" value=\"" + String((int) GlobalParameters.currentNumberofColors) + "\"></div>\n";
   ptr += "<div><label for=\"currentBehavior\">Enter desired behavior [0-2 = less to more aggro; 3 = alwaysRight; 4 = alwaysLeft]:</label>\n";
-  ptr += "<input id=\"currentBehavior\" name=\"currentBehavior\" value=\"" + String(currentBehavior) + "\"></div>\n";
+  ptr += "<input id=\"currentBehavior\" name=\"currentBehavior\" value=\"" + String((int) GlobalParameters.currentBehavior) + "\"></div>\n";
   ptr += "<div><label for=\"currentDirection\">Enter ripple direction [-1 = All directions; 0-5 = direction clockwise starting at 12:00; 6 = random direction]:</label>\n";
-  ptr += "<input id=\"currentDirection\" name=\"currentDirection\" value=\"" + String(currentDirection) + "\"></div>\n";
+  ptr += "<input id=\"currentDirection\" name=\"currentDirection\" value=\"" + String(GlobalParameters.currentDirection) + "\"></div>\n";
   ptr += "<div><label for=\"currentDecay\">Enter decay per tick [0.5 - 0.995]:</label>\n";
-  ptr += "<input id=\"currentDecay\" name=\"currentDecay\" value=\"" + String(currentDecay, 3) + "\"></div>\n";
-  ptr += "<div><button type=\"submit\">Submit</button></div>\n";
-  ptr += "</form>\n";
+  ptr += "<input id=\"currentDecay\" name=\"currentDecay\" value=\"" + String(GlobalParameters.currentDecay, 3) + "\"></div>\n";
+  ptr += "<div>\n"; /*begin buttons */
+  ptr += "<button type=\"submit\">Submit</button>\n";
+  ptr += "</div>\n"; /* end buttons */
+  ptr += "</form>\n"; 
+  ptr += "<div>\n"; /*begin buttons */
+  ptr += "<p><a href=\"/WriteEEPROM\"><button class=\"button\">Store to EEPROM</button></a></p>\n";
+  ptr += "<p><a href=\"/ReadEEPROM\"><button class=\"button\">Restore defaults</button></a></p>\n";
+  ptr += "</div>\n"; /* end buttons */
+
   
   /* Javascript functions */
   /* for Master Enable */
@@ -227,8 +237,8 @@ void handle_PostRequest() {
       Serial.print("received new NumberofRipples from POST request: ");
       Serial.print(NumberofRipples);
       Serial.print(". Previous value: ");
-      Serial.println(currentNumberofRipples);
-      currentNumberofRipples = NumberofRipples;
+      Serial.println(GlobalParameters.currentNumberofRipples);
+      GlobalParameters.currentNumberofRipples = NumberofRipples;
     } else {
       Serial.println("new NumberofRipples not valid; discarded.");
     }
@@ -237,8 +247,8 @@ void handle_PostRequest() {
       Serial.print("received new DelayBetweenRipples from POST request: ");
       Serial.print(DelayBetweenRipples);
       Serial.print(". Previous value: ");
-      Serial.println(currentDelayBetweenRipples);
-      currentDelayBetweenRipples = DelayBetweenRipples;
+      Serial.println(GlobalParameters.currentDelayBetweenRipples);
+      GlobalParameters.currentDelayBetweenRipples = DelayBetweenRipples;
     } else {
       Serial.println("new DelayBetweenRipples not valid; discarded.");
     }
@@ -247,8 +257,8 @@ void handle_PostRequest() {
       Serial.print("received new RainbowDeltaPerTick from POST request: ");
       Serial.print(RainbowDeltaPerTick);
       Serial.print(". Previous value: ");
-      Serial.println(currentRainbowDeltaPerTick);
-      currentRainbowDeltaPerTick = RainbowDeltaPerTick;
+      Serial.println(GlobalParameters.currentRainbowDeltaPerTick);
+      GlobalParameters.currentRainbowDeltaPerTick = RainbowDeltaPerTick;
     } else {
       Serial.println("new RainbowDeltaPerTick not valid; discarded.");
     }
@@ -257,8 +267,8 @@ void handle_PostRequest() {
       Serial.print("received new RippleLifeSpan from POST request: ");
       Serial.print(RippleLifeSpan);
       Serial.print(". Previous value: ");
-      Serial.println(currentRippleLifeSpan);
-      currentRippleLifeSpan = RippleLifeSpan;
+      Serial.println(GlobalParameters.currentRippleLifeSpan);
+      GlobalParameters.currentRippleLifeSpan = RippleLifeSpan;
     } else {
       Serial.println("new RippleLifeSpan not valid; discarded.");
     }
@@ -267,8 +277,8 @@ void handle_PostRequest() {
       Serial.print("received new Ripple Speed from POST request: ");
       Serial.print(String(RippleSpeed, 2));
       Serial.print(". Previous value: ");
-      Serial.println(String(currentRippleSpeed, 2));
-      currentRippleSpeed = RippleSpeed;
+      Serial.println(String(GlobalParameters.currentRippleSpeed, 2));
+      GlobalParameters.currentRippleSpeed = RippleSpeed;
     } else {
       Serial.println("new Ripple Speed not valid; discarded.");
     }
@@ -277,8 +287,8 @@ void handle_PostRequest() {
       Serial.print("received new NumberofColors from POST request: ");
       Serial.print(NumberofColors);
       Serial.print(". Previous value: ");
-      Serial.println(currentNumberofColors);
-      currentNumberofColors = NumberofColors;
+      Serial.println(GlobalParameters.currentNumberofColors);
+      GlobalParameters.currentNumberofColors = NumberofColors;
     } else {
       Serial.println("new NumberofColors not valid; discarded.");
     }
@@ -287,8 +297,8 @@ void handle_PostRequest() {
       Serial.print("received new Behavior from POST request: ");
       Serial.print(Behavior);
       Serial.print(". Previous value: ");
-      Serial.println(currentBehavior);
-      currentBehavior = Behavior;
+      Serial.println(GlobalParameters.currentBehavior);
+      GlobalParameters.currentBehavior = Behavior;
     } else {
       Serial.println("new Behavior not valid; discarded.");
     }
@@ -297,8 +307,8 @@ void handle_PostRequest() {
       Serial.print("received new Direction from POST request: ");
       Serial.print(Direction);
       Serial.print(". Previous value: ");
-      Serial.println(currentDirection);
-      currentDirection = Direction;
+      Serial.println(GlobalParameters.currentDirection);
+      GlobalParameters.currentDirection = Direction;
     } else {
       Serial.println("new Direction not valid; discarded.");
     }
@@ -307,8 +317,8 @@ void handle_PostRequest() {
       Serial.print("received new Decay factor from POST request: ");
       Serial.print(String(Decay, 3));
       Serial.print(". Previous value: ");
-      Serial.println(String(currentDecay, 3));
-      currentDecay = Decay;
+      Serial.println(String(GlobalParameters.currentDecay, 3));
+      GlobalParameters.currentDecay = Decay;
     } else {
       Serial.println("new Decay not valid; discarded.");
     }
@@ -329,64 +339,74 @@ void handle_ManualRipple() {
   server.send(500, "text/html", SendHTML());
 }
 
+void handle_WriteEEPROM() {
+  EEPROM_Write_GlobalParameters();
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_ReadEEPROM() {
+  EEPROM_Read_GlobalParameters();
+  server.send(500, "text/html", SendHTML());
+}
+
 void handle_MasterFireRippleEnabled_On() {
   Serial.println("Master Automatic ripples: ON");
-  loop_MasterFireRippleEnabled = 1;
+  GlobalParameters.loop_MasterFireRippleEnabled = 1;
 }
 
 void handle_MasterFireRippleEnabled_Off() {
   Serial.println("Master Automatic ripples: OFF");
-  loop_MasterFireRippleEnabled = 0;
+  GlobalParameters.loop_MasterFireRippleEnabled = 0;
 }
 
 void handle_CenterFireRippleEnabled_On() {
   Serial.println("Center Automatic ripples: ON");
-  loop_CenterFireRippleEnabled = 1;
+  GlobalParameters.loop_CenterFireRippleEnabled = 1;
 }
 
 void handle_CenterFireRippleEnabled_Off() {
   Serial.println("Center Automatic ripples: OFF");
-  loop_CenterFireRippleEnabled = 0;
+  GlobalParameters.loop_CenterFireRippleEnabled = 0;
 }
 
 void handle_CubeFireRippleEnabled_On() {
   Serial.println("Cube Automatic ripples: ON");
-  loop_CubeFireRippleEnabled = 1;
+  GlobalParameters.loop_CubeFireRippleEnabled = 1;
 }
 
 void handle_CubeFireRippleEnabled_Off() {
   Serial.println("Cube Automatic ripples: OFF");
-  loop_CubeFireRippleEnabled = 0;
+  GlobalParameters.loop_CubeFireRippleEnabled = 0;
 }
 
 void handle_QuadFireRippleEnabled_On() {
   Serial.println("Quad Automatic ripples: ON");
-  loop_QuadFireRippleEnabled = 1;
+  GlobalParameters.loop_QuadFireRippleEnabled = 1;
 }
 
 void handle_QuadFireRippleEnabled_Off() {
   Serial.println("Quad Automatic ripples: OFF");
-  loop_QuadFireRippleEnabled = 0;
+  GlobalParameters.loop_QuadFireRippleEnabled = 0;
 }
 
 void handle_BorderFireRippleEnabled_On() {
   Serial.println("Border Automatic ripples: ON");
-  loop_BorderFireRippleEnabled = 1;
+  GlobalParameters.loop_BorderFireRippleEnabled = 1;
 }
 
 void handle_BorderFireRippleEnabled_Off() {
   Serial.println("Border Automatic ripples: OFF");
-  loop_BorderFireRippleEnabled = 0;
+  GlobalParameters.loop_BorderFireRippleEnabled = 0;
 }
 
 void handle_RandomEffectEnabled_On() {
   Serial.println("Border Automatic ripples: ON");
-  loop_RandomEffectEnabled = 1;
+  GlobalParameters.loop_RandomEffectEnabled = 1;
 }
 
 void handle_RandomEffectEnabled_Off() {
   Serial.println("Border Automatic ripples: OFF");
-  loop_RandomEffectEnabled = 0;
+  GlobalParameters.loop_RandomEffectEnabled = 0;
 }
 
 /* to be called periodically inside loop() */
@@ -409,6 +429,8 @@ void WiFi_init(void){
   /* Setup REST API Handlers */
   server.on("/", handle_OnConnect);
   server.on("/ManualRipple", handle_ManualRipple);
+  server.on("/WriteEEPROM", handle_WriteEEPROM);
+  server.on("/ReadEEPROM", handle_ReadEEPROM);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/CenterFireRippleEnabled/off", handle_CenterFireRippleEnabled_Off);

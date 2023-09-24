@@ -4,22 +4,27 @@
 #include <WiFi.h>
 
 /* Variables used for control over web server */
-extern int loop_MasterFireRippleEnabled;
-extern int loop_CenterFireRippleEnabled;
-extern int loop_CubeFireRippleEnabled;
-extern int loop_QuadFireRippleEnabled;
-extern int loop_BorderFireRippleEnabled;
-extern int loop_RandomEffectEnabled;
-extern int manualFireRipple;
-extern int currentNumberofRipples;
-extern int currentNumberofColors;
-extern int currentBehavior;
-extern int currentDirection;
-extern short currentDelayBetweenRipples;
-extern short currentRainbowDeltaPerTick; /* units: hue */
-extern unsigned long currentRippleLifeSpan;
-extern float currentRippleSpeed;
-extern float currentDecay;
+typedef struct {
+    boolean loop_MasterFireRippleEnabled;
+    boolean loop_CenterFireRippleEnabled;
+    boolean loop_CubeFireRippleEnabled;
+    boolean loop_QuadFireRippleEnabled;
+    boolean loop_BorderFireRippleEnabled;
+    boolean loop_RandomEffectEnabled;
+    unsigned char currentNumberofRipples;
+    unsigned char currentNumberofColors;
+    unsigned char currentBehavior;
+    signed char currentDirection;
+    short currentDelayBetweenRipples;
+    short currentRainbowDeltaPerTick; /* units: hue */
+    unsigned long currentRippleLifeSpan;
+    float currentRippleSpeed;
+    float currentDecay;
+} GlobalParameters_struct;
+
+extern GlobalParameters_struct GlobalParameters;
+
+extern boolean manualFireRipple;
      
 void WiFi_MainFunction(void);      
 void WiFi_init(void);           

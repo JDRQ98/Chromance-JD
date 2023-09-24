@@ -14,6 +14,8 @@
 
 #include "ripple.h"
 #include "HTTP_Server.h"
+#include "ASW.h"
+#include "EEP.h"
 
 //#define ENABLE_DEBUGGING
 #define NUMBER_OF_DIRECTIONS 3
@@ -31,6 +33,7 @@ unsigned long lastRippleTime = 0;
 void setup() {
   Serial.begin(115200);
 
+  EEPROM.begin(EEPROM_SIZE);
   Strips_init();
   WiFi_init();
 
@@ -65,6 +68,8 @@ void setup() {
   ArduinoOTA.begin();
 
   Serial.println("Ready for WiFi OTA updates");
+
+  //EEPROM_Read_GlobalParameters();
 }
 
 
@@ -79,33 +84,33 @@ void loop(){
 
   Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
 
-  if((benchmark-lastRippleTime) > currentDelayBetweenRipples){
+  if((benchmark-lastRippleTime) > GlobalParameters.currentDelayBetweenRipples){
     DelayPeriodActive = 0; /* Delay has passed; we may now begin a new burst*/
   }
   
-  if(!DelayPeriodActive && loop_MasterFireRippleEnabled){ /* fire cyclic burst */
+  if(!DelayPeriodActive && GlobalParameters.loop_MasterFireRippleEnabled){ /* fire cyclic burst */
     lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
     DelayPeriodActive = 1;
 
 
-    if(loop_RandomEffectEnabled){
-      rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, NO_NODE_LIMIT);
+    if(GlobalParameters.loop_RandomEffectEnabled){
+      rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, NO_NODE_LIMIT);
     }
 
-    if(loop_CubeFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
+    if(GlobalParameters.loop_CubeFireRippleEnabled){
+      rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
-    if(loop_CenterFireRippleEnabled){
-      rippleFired_return |= FireRipple_CenterNode(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
+    if(GlobalParameters.loop_CenterFireRippleEnabled){
+      rippleFired_return |= FireRipple_CenterNode(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
-    if(loop_QuadFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllQuadNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
+    if(GlobalParameters.loop_QuadFireRippleEnabled){
+      rippleFired_return |= FireRipple_AllQuadNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
 
-    if(loop_BorderFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, currentDirection, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
+    if(GlobalParameters.loop_BorderFireRippleEnabled){
+      rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
     }
     
     
@@ -117,14 +122,14 @@ void loop(){
     manualFireRipple = 0;
     rippleFired_return = 0;
     
-    rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, currentBehavior, currentRippleLifeSpan, currentRippleSpeed, currentRainbowDeltaPerTick, NO_NODE_LIMIT);
+    rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, NO_NODE_LIMIT);
     
   }
 
   if (rippleFired_return)
   { /* ripples were fired during this window */
     nextColor++;
-    nextColor = (nextColor) % currentNumberofColors;
+    nextColor = (nextColor) % GlobalParameters.currentNumberofColors;
     rippleFired_return = 0;
   }
 
