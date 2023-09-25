@@ -17,7 +17,7 @@
 #include "ASW.h"
 #include "EEP.h"
 
-//#define ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING
 #define NUMBER_OF_DIRECTIONS 3
 #define NUMBER_OF_STARTING_NODES 3
 
@@ -28,12 +28,14 @@ int nextColor = 0;
 bool DelayPeriodActive = 0;
 int nextNode = 0;
 unsigned long lastRippleTime = 0;
+unsigned int Global_NumberOfProfiles_InDFLS = 0;
 
 
 void setup() {
   Serial.begin(115200);
 
   EEPROM.begin(EEPROM_SIZE);
+  Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
   Strips_init();
   WiFi_init();
 
@@ -134,8 +136,8 @@ void loop(){
   }
 
 #ifdef ENABLE_DEBUGGING
-    Serial.print("Time spent executing one loop() in milliseconds: ");
-    Serial.println(millis() - benchmark);
+    /*Serial.print("Time spent executing one loop() in milliseconds: ");
+    Serial.println(millis() - benchmark);*/
   #endif
 
 }

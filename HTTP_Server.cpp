@@ -141,6 +141,7 @@ String SendHTML(void) {
   ptr += "<div>\n"; /*begin buttons */
   ptr += "<p><a href=\"/WriteEEPROM\"><button class=\"button\">Store to EEPROM</button></a></p>\n";
   ptr += "<p><a href=\"/ReadEEPROM\"><button class=\"button\">Restore defaults</button></a></p>\n";
+  ptr += "<p><a href=\"/SWreset\"><button class=\"button\">Software reset</button></a></p>\n";
   ptr += "</div>\n"; /* end buttons */
 
   
@@ -340,13 +341,17 @@ void handle_ManualRipple() {
 }
 
 void handle_WriteEEPROM() {
-  EEPROM_Write_GlobalParameters();
+  EEPROM_StoreProfile(0U);
   server.send(500, "text/html", SendHTML());
 }
 
 void handle_ReadEEPROM() {
-  EEPROM_Read_GlobalParameters();
+  EEPROM_RestoreProfile(0U);
   server.send(500, "text/html", SendHTML());
+}
+
+void handle_SWreset() {
+  ESP.restart();
 }
 
 void handle_MasterFireRippleEnabled_On() {
@@ -431,6 +436,7 @@ void WiFi_init(void){
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/WriteEEPROM", handle_WriteEEPROM);
   server.on("/ReadEEPROM", handle_ReadEEPROM);
+  server.on("/SWreset", handle_SWreset);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/CenterFireRippleEnabled/off", handle_CenterFireRippleEnabled_Off);
