@@ -42,6 +42,7 @@ GlobalParameters_struct GlobalParameters = {
   .currentDecay = 0.985,  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 };
 boolean manualFireRipple = 0;
+unsigned int currentProfile = 0;
 
 String SendHTML(void) {
   // Display the HTML web page
@@ -55,6 +56,9 @@ String SendHTML(void) {
   ptr += "text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}\n";
   ptr += "text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}\n";
   ptr += ".button2 {background-color: #555555;}\n";
+  ptr += ".InactiveProfile { background-color: gray; font-size: 30px; color: white; padding: 25px 25px; margin: 5px; border: none; cursor: pointer;}\n";
+  ptr += ".ActiveProfile { background-color: #4CAF50; font-size: 30px; color: white; padding: 25px 25px; margin: 5px; border: none; cursor: pointer;}\n";
+  ptr += ".SelectedProfile { background-color: #green; font-size: 30px; color: white; padding: 30px 30px; margin: 5px; border: none; cursor: pointer;}\n";
   ptr += "form div {\n";
   ptr += " display: flex;\n";
   ptr += " justify-content: space-between;\n";
@@ -77,6 +81,8 @@ String SendHTML(void) {
   ptr += "<p> Fire Manual Ripple </p>\n";
   ptr += "<p><a href=\"/ManualRipple\"><button class=\"button\">Fire!</button></a></p>\n";
   
+  /****************** BEGINNING OF CHECKBOXES ******************/
+  ptr += "<section id=\"checkboxes\"\n>";
   /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
   if (GlobalParameters.loop_MasterFireRippleEnabled) {
     ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\" checked><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
@@ -113,7 +119,12 @@ String SendHTML(void) {
   } else {
     ptr += "<p><input type=\"checkbox\" id=\"Random-Effect-checkbox\" name=\"Random-ripple\" value=\"1\" onchange=\"toggleRandomEffect(this)\"><label for=\"Random-Effect-checkbox\">Enable Random effect</label></p>\n";
   }
+  ptr += "</section\n>";
+  /****************** END OF CHECKBOXES ******************/
   
+
+  /****************** BEGINNING OF USER INPUT ******************/
+  ptr += "<section id=\"userinput\"\n>";
   /* Text input for number of ripples */
   ptr += "<form action=\"/updateInternalVariables\" method=\"post\">\n";
   ptr += "<div><label for=\"NumberofRipples\">Enter number of ripples [1 - 99]:</label>\n";
@@ -138,12 +149,55 @@ String SendHTML(void) {
   ptr += "<button type=\"submit\">Submit</button>\n";
   ptr += "</div>\n"; /* end buttons */
   ptr += "</form>\n"; 
-  ptr += "<div>\n"; /*begin buttons */
-  ptr += "<p><a href=\"/WriteEEPROM\"><button class=\"button\">Store to EEPROM</button></a></p>\n";
-  ptr += "<p><a href=\"/ReadEEPROM\"><button class=\"button\">Restore defaults</button></a></p>\n";
-  ptr += "<p><a href=\"/SWreset\"><button class=\"button\">Software reset</button></a></p>\n";
-  ptr += "</div>\n"; /* end buttons */
+  ptr += "</section\n>";
+  /****************** END OF USER INPUT ******************/
 
+
+  /****************** BEGINNING OF PROFILE MANAGEMENT ******************/
+  ptr += "<section id=\"userinput\"\n>";
+  ptr += "<h1> Profiles </h1\n>";
+    ptr += "<p> Current profile: " + String(currentProfile) + "</p\n>";
+    ptr += "<div\n>";
+      ptr += "<div id=\"profiles\"\n>";
+        /* button 1*/
+        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_1\"><button ";
+        if( (currentProfile == 0) && (ProfilesAvailable[0] == 1U)) ptr += "class=\"SelectedProfile\"";
+        else if (ProfilesAvailable[0] == 1U) ptr += "class=\"ActiveProfile\"";
+        else ptr += "class=\"InactiveProfile\"";
+        ptr += ">#1</button></a>\n";
+        /* button 2*/
+        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_2\"><button ";
+        if( (currentProfile == 1) && (ProfilesAvailable[1] == 1U)) ptr += "class=\"SelectedProfile\"";
+        else if (ProfilesAvailable[1] == 1U) ptr += "class=\"ActiveProfile\"";
+        else ptr += "class=\"InactiveProfile\"";
+        ptr += ">#2</button></a>\n";
+        /* button 3*/
+        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_3\"><button ";
+        if( (currentProfile == 2) && (ProfilesAvailable[2] == 1U)) ptr += "class=\"SelectedProfile\"";
+        else if (ProfilesAvailable[2] == 1U) ptr += "class=\"ActiveProfile\"";
+        else ptr += "class=\"InactiveProfile\"";
+        ptr += ">#3</button></a>\n";
+        /* button 4*/
+        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_4\"><button ";
+        if( (currentProfile == 3) && (ProfilesAvailable[3] == 1U)) ptr += "class=\"SelectedProfile\"";
+        else if (ProfilesAvailable[3] == 1U) ptr += "class=\"ActiveProfile\"";
+        else ptr += "class=\"InactiveProfile\"";
+        ptr += ">#4</button></a>\n";
+        /* button 5*/
+        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_5\"><button ";
+        if( (currentProfile == 4) && (ProfilesAvailable[4] == 1U)) ptr += "class=\"SelectedProfile\"";
+        else if (ProfilesAvailable[4] == 1U) ptr += "class=\"ActiveProfile\"";
+        else ptr += "class=\"InactiveProfile\"";
+        ptr += ">#5</button></a>\n";
+      ptr += "</div\n>";
+      ptr += "<div\n>";
+        ptr += "<a href=\"http://192.168.0.241/StoreProfile\"><button class=\"button\">Store Profile</button></a\n>";
+        ptr += "<a href=\"http://192.168.0.241/DeleteProfile\"><button class=\"button\">Delete Profile</button></a\n>";
+      ptr += "</div\n>";
+    ptr += "</div\n>";
+  ptr += "</section\n>";
+  /****************** END OF PROFILE MANAGEMENT ******************/
+  ptr += "<p><a href=\"/SWreset\"><button class=\"button\">Software reset</button></a></p>\n";
   
   /* Javascript functions */
   /* for Master Enable */
@@ -340,13 +394,73 @@ void handle_ManualRipple() {
   server.send(500, "text/html", SendHTML());
 }
 
-void handle_WriteEEPROM() {
+void handle_RestoreProfile_1() {
+  boolean EEP_return = 0U;
+  currentProfile = 0;
+  EEP_return = EEPROM_RestoreProfile(currentProfile);
+  if(EEP_return == 1U){ 
+    /* profile found */
+  } else{
+
+  }
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_RestoreProfile_2() {
+  boolean EEP_return = 0U;
+  currentProfile = 1;
+  EEP_return = EEPROM_RestoreProfile(currentProfile);
+  if(EEP_return == 1U){ 
+    /* profile found */
+  } else{
+
+  }
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_RestoreProfile_3() {
+  boolean EEP_return = 0U;
+  currentProfile = 2;
+  EEP_return = EEPROM_RestoreProfile(currentProfile);
+  if(EEP_return == 1U){ 
+    /* profile found */
+  } else{
+
+  }
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_RestoreProfile_4() {
+  boolean EEP_return = 0U;
+  currentProfile = 3;
+  EEP_return = EEPROM_RestoreProfile(currentProfile);
+  if(EEP_return == 1U){ 
+    /* profile found */
+  } else{
+
+  }
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_RestoreProfile_5() {
+  boolean EEP_return = 0U;
+  currentProfile = 4;
+  EEP_return = EEPROM_RestoreProfile(currentProfile);
+  if(EEP_return == 1U){ 
+    /* profile found */
+  } else{
+
+  }
+  server.send(500, "text/html", SendHTML());
+}
+
+void handle_StoreProfile() {
   EEPROM_StoreProfile(0U);
   server.send(500, "text/html", SendHTML());
 }
 
-void handle_ReadEEPROM() {
-  EEPROM_RestoreProfile(0U);
+void handle_DeleteProfile() {
+  //EEPROM_RestoreProfile(0U);
   server.send(500, "text/html", SendHTML());
 }
 
@@ -434,8 +548,13 @@ void WiFi_init(void){
   /* Setup REST API Handlers */
   server.on("/", handle_OnConnect);
   server.on("/ManualRipple", handle_ManualRipple);
-  server.on("/WriteEEPROM", handle_WriteEEPROM);
-  server.on("/ReadEEPROM", handle_ReadEEPROM);
+  server.on("/RestoreProfile_1", handle_RestoreProfile_1);
+  server.on("/RestoreProfile_2", handle_RestoreProfile_2);
+  server.on("/RestoreProfile_3", handle_RestoreProfile_3);
+  server.on("/RestoreProfile_4", handle_RestoreProfile_4);
+  server.on("/RestoreProfile_5", handle_RestoreProfile_5);
+  server.on("/StoreProfile", handle_StoreProfile);
+  server.on("/DeleteProfile", handle_DeleteProfile);
   server.on("/SWreset", handle_SWreset);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);

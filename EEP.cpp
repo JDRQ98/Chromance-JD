@@ -2,6 +2,8 @@
 #include "HTTP_Server.h"
 
 static unsigned int EEP_ProfileSize = 0;
+unsigned int Global_NumberOfProfiles_InDFLS = 0;
+boolean ProfilesAvailable[EEPROM_SUPPORTED_PROFILES];
 
 void EEPROM_Write_GlobalParameters() {
 #if (EEPROM_DEBUGGING == TRUE)
@@ -38,23 +40,25 @@ unsigned int EEPROM_ParseProfiles() {
   EEPROM.get(number_of_profiles, local_Profile);
   local_hash = local_Profile.ProfileHash;
 #if (EEPROM_DEBUGGING == TRUE)
-  Serial.print("Parsing profiles in DFLS - ");
-  Serial.println("retored the following data:");
-  Serial.print("ProfileHash: ");
-  Serial.println(local_Profile.ProfileHash);
-  Serial.print("ProfileID: ");
-  Serial.println(local_Profile.ProfileID);
+  Serial.print("Profile size in DFLS: ");
+  Serial.print(EEP_ProfileSize);
+  Serial.println(" bytes.");
 #endif
-  while (local_hash == (unsigned int) PROFILE_HASH) { /* is this actually a profile or just junk? */
-    number_of_profiles++;
-    if ( (number_of_profiles * EEP_ProfileSize) < EEPROM_SIZE) break; /* be careful not to read from non-existing address */
-    EEPROM.get( (number_of_profiles * EEP_ProfileSize), local_hash);
+
+  for(int i = 0; i<EEPROM_SUPPORTED_PROFILES; i++) { /* parse all profiles */
+    EEPROM.get( (i * EEP_ProfileSize), local_hash);
+    if(local_hash == (unsigned int) PROFILE_HASH) { /* is this actually a profile or just junk? */
+      ProfilesAvailable[i] = 1U;
 #if (EEPROM_DEBUGGING == TRUE)
-    Serial.print("Profile ");
-    Serial.println(number_of_profiles);
-    Serial.print("hash: ");
-    Serial.println(local_hash);
+      Serial.print("Found valid profile ");
+      Serial.print(i+1);
+      Serial.print(" with the following data: ");
+      Serial.print("ProfileHash = ");
+      Serial.print(local_Profile.ProfileHash);
+      Serial.print(", ProfileID = ");
+      Serial.println(local_Profile.ProfileID);
 #endif
+    }
   }
 
 #if (EEPROM_DEBUGGING == TRUE)
@@ -90,16 +94,20 @@ void EEPROM_StoreProfile(unsigned int profileNumber) {
   Serial.println((profileNumber * EEP_ProfileSize));
 #endif
   EEPROM.put((profileNumber * EEP_ProfileSize), local_Profile);
+  Global_NumberOfProfiles_InDFLS++;
   EEPROM.commit();
 }
 
 
 
 
-void EEPROM_RestoreProfile(unsigned int profileNumber) {
+boolean EEPROM_RestoreProfile(unsigned int profileNumber) {
   ProfileParameters_struct local_Profile;
+  unsigned int local_hash;
+  boolean ret_val = 0U;
   unsigned int EEP_ProfileSize = sizeof(local_Profile);
   EEPROM.get((profileNumber * EEP_ProfileSize), local_Profile);
+  local_hash = local_Profile.ProfileHash;
 #if (EEPROM_DEBUGGING == TRUE)
   Serial.print("Retoring profile ");
   Serial.print(profileNumber);
@@ -113,15 +121,19 @@ void EEPROM_RestoreProfile(unsigned int profileNumber) {
   Serial.print("ProfileID: ");
   Serial.println(local_Profile.ProfileID);
 #endif
-  GlobalParameters.loop_MasterFireRippleEnabled = local_Profile.loop_MasterFireRippleEnabled;
-  GlobalParameters.loop_CenterFireRippleEnabled = local_Profile.loop_CenterFireRippleEnabled;
-  GlobalParameters.loop_RandomEffectEnabled  = local_Profile.loop_RandomEffectEnabled;
-  GlobalParameters.currentNumberofRipples = local_Profile.currentNumberofRipples;
-  GlobalParameters.currentNumberofColors = local_Profile.currentNumberofColors;
-  GlobalParameters.currentBehavior  = local_Profile.currentBehavior;
-  GlobalParameters.currentDelayBetweenRipples = local_Profile.currentDelayBetweenRipples;
-  GlobalParameters.currentRainbowDeltaPerTick = local_Profile.currentRainbowDeltaPerTick;
-  GlobalParameters.currentRippleLifeSpan = local_Profile.currentRippleLifeSpan;
-  GlobalParameters.currentRippleSpeed = local_Profile.currentRippleSpeed;
-  GlobalParameters.currentDecay = local_Profile.currentDecay;
+  if(local_hash == (unsigned int) PROFILE_HASH){ /* only apply configuration if we restored a valid hash from EEPROM */
+    ret_val = 1U; /* valid profile found */
+    GlobalParameters.loop_MasterFireRippleEnabled = local_Profile.loop_MasterFireRippleEnabled;
+    GlobalParameters.loop_CenterFireRippleEnabled = local_Profile.loop_CenterFireRippleEnabled;
+    GlobalParameters.loop_RandomEffectEnabled  = local_Profile.loop_RandomEffectEnabled;
+    GlobalParameters.currentNumberofRipples = local_Profile.currentNumberofRipples;
+    GlobalParameters.currentNumberofColors = local_Profile.currentNumberofColors;
+    GlobalParameters.currentBehavior  = local_Profile.currentBehavior;
+    GlobalParameters.currentDelayBetweenRipples = local_Profile.currentDelayBetweenRipples;
+    GlobalParameters.currentRainbowDeltaPerTick = local_Profile.currentRainbowDeltaPerTick;
+    GlobalParameters.currentRippleLifeSpan = local_Profile.currentRippleLifeSpan;
+    GlobalParameters.currentRippleSpeed = local_Profile.currentRippleSpeed;
+    GlobalParameters.currentDecay = local_Profile.currentDecay;
+  }
+return ret_val;
 }

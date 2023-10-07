@@ -6,9 +6,11 @@
 #define EEPROM_SIZE 512
 #define PROFILE_HASH 0xAAAAAAAA
 #define EEPROM_DEBUGGING TRUE
+#define EEPROM_SUPPORTED_PROFILES 5
 
 /* public variables */
 extern unsigned int Global_NumberOfProfiles_InDFLS;
+extern boolean ProfilesAvailable[EEPROM_SUPPORTED_PROFILES];
 
 typedef struct {
   unsigned int ProfileHash; /* hash isn't the most appropriate name for this, this is simply a byte used to identy in DFLS that this is the start of a profile */
@@ -30,7 +32,7 @@ extern void EEPROM_Write_GlobalParameters();
 extern void EEPROM_Read_GlobalParameters();
 
 unsigned int EEPROM_ParseProfiles();
-extern void EEPROM_RestoreProfile(unsigned int profileNumber);
+extern boolean EEPROM_RestoreProfile(unsigned int profileNumber); /* returns TRUE if restore successful, FALSE if restore unsuccessful*/
 extern void EEPROM_StoreProfile(unsigned int profileNumber);
 
 #endif

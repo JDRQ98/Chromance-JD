@@ -28,7 +28,7 @@ int nextColor = 0;
 bool DelayPeriodActive = 0;
 int nextNode = 0;
 unsigned long lastRippleTime = 0;
-unsigned int Global_NumberOfProfiles_InDFLS = 0;
+
 
 
 void setup() {
