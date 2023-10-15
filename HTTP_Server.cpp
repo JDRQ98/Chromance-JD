@@ -143,7 +143,7 @@ String SendHTML(void) {
   ptr += "<input id=\"currentBehavior\" name=\"currentBehavior\" value=\"" + String((int) GlobalParameters.currentBehavior) + "\"></div>\n";
   ptr += "<div><label for=\"currentDirection\">Enter ripple direction [-1 = All directions; 0-5 = direction clockwise starting at 12:00; 6 = random direction]:</label>\n";
   ptr += "<input id=\"currentDirection\" name=\"currentDirection\" value=\"" + String(GlobalParameters.currentDirection) + "\"></div>\n";
-  ptr += "<div><label for=\"currentDecay\">Enter decay per tick [0.5 - 0.995]:</label>\n";
+  ptr += "<div><label for=\"currentDecay\">Enter decay per tick [0.5 - 1]:</label>\n";
   ptr += "<input id=\"currentDecay\" name=\"currentDecay\" value=\"" + String(GlobalParameters.currentDecay, 3) + "\"></div>\n";
   ptr += "<div>\n"; /*begin buttons */
   ptr += "<button type=\"submit\">Submit</button>\n";
@@ -368,7 +368,7 @@ void handle_PostRequest() {
       Serial.println("new Direction not valid; discarded.");
     }
 
-    if(Decay >= 0.5 && Decay <= 0.996){ /* new value received */
+    if(Decay >= 0.5 && Decay <= 1){ /* new value received */
       Serial.print("received new Decay factor from POST request: ");
       Serial.print(String(Decay, 3));
       Serial.print(". Previous value: ");
