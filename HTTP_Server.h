@@ -2,6 +2,8 @@
 #define HTTP_SERVER_H
 
 #include <WiFi.h>
+#include <ESPmDNS.h>
+#include "HueBridge.h"
 
 /* Variables used for control over web server */
 typedef struct {
@@ -22,6 +24,7 @@ typedef struct {
   float currentDecay;
 } GlobalParameters_struct;
 
+extern HueBridge hueBridge; /* used for WebServer - belongs to hueBridge */
 
 extern GlobalParameters_struct GlobalParameters;
 

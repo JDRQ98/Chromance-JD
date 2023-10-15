@@ -8,7 +8,6 @@
 
 #include <Adafruit_NeoPixel.h>
 #include <SPI.h>
-#include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 #include <ArduinoOSCWiFi.h>
 
@@ -16,8 +15,9 @@
 #include "HTTP_Server.h"
 #include "ASW.h"
 #include "EEP.h"
+#include "SimpleJson.h"
+#include "HueBridge.h"
 
-#define ENABLE_DEBUGGING
 #define NUMBER_OF_DIRECTIONS 3
 #define NUMBER_OF_STARTING_NODES 3
 
@@ -29,7 +29,7 @@ bool DelayPeriodActive = 0;
 int nextNode = 0;
 unsigned long lastRippleTime = 0;
 
-
+HueBridge hueBridge;
 
 void setup() {
   Serial.begin(115200);
@@ -71,9 +71,37 @@ void setup() {
 
   Serial.println("Ready for WiFi OTA updates");
 
+
+  // setup device name for Amazon Echo
+  hueBridge.addDevice("hexagono");
+  hueBridge.onSetState(handle_SetState);
+  hueBridge.start();
+
+
   //EEPROM_Read_GlobalParameters();
 }
 
+void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
+{
+  Serial.printf_P("\nhandle_SetState id: %d, state: %s, bri: %d, ct: %d, hue: %d, sat: %d, mode: %s\n", 
+    id, state ? "true": "false", bri, ct, hue, sat, mode == 'h' ? "hs" : mode == 'c' ? "ct" : "xy");
+
+  if ( ct == 383 ){
+    Serial.println("Warm white");
+  }
+
+  if ( hue == 0 && sat == 254 ){
+    Serial.println("Red");
+  }
+
+  if ( hue == 21845 && sat == 254 ){
+    Serial.println("Green");
+  }
+
+  if ( hue == 43690 && sat == 254 ){
+    Serial.println("Blue");
+  }
+}
 
 
 void loop(){
@@ -82,7 +110,8 @@ void loop(){
 
   OscWiFi.parse();
   ArduinoOTA.handle();            // Handle OTA updates
-  WiFi_MainFunction();
+  //WiFi_MainFunction();
+  hueBridge.handle();
 
   Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
 
@@ -134,10 +163,4 @@ void loop(){
     nextColor = (nextColor) % GlobalParameters.currentNumberofColors;
     rippleFired_return = 0;
   }
-
-#ifdef ENABLE_DEBUGGING
-    /*Serial.print("Time spent executing one loop() in milliseconds: ");
-    Serial.println(millis() - benchmark);*/
-  #endif
-
 }

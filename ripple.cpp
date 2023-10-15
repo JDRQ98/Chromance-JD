@@ -4,7 +4,7 @@
 int lengths[NUMBER_OF_STRIPS] = {165, 165}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
-Adafruit_NeoPixel strip0(lengths[0], 15,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip0(lengths[0], 4,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
 
@@ -193,14 +193,6 @@ bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned
      /* ripple is currently active; ignore request */
      return 0;
   }
-    #ifdef ENABLE_DEBUGGING
-      Serial.print("Firing ripple ");
-      Serial.print(ripple);
-      Serial.print(" from node ");
-      Serial.print(node);
-      Serial.print(" in direction ");
-      Serial.println(dir);
-    #endif
 };
 
 
@@ -298,4 +290,3 @@ bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, un
   *firstRipple = currentRipple;
   return rippleFired;
 }
-

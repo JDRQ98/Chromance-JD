@@ -17,7 +17,7 @@ const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should req
 const IPAddress gateway(192, 168, 0, 1);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
 
-WebServer server(80); //Open port number 80 (HTTP)
+#define server hueBridge.webServer //Open port number 80 (HTTP)
 
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
@@ -546,7 +546,7 @@ void WiFi_init(void){
   }
   
   /* Setup REST API Handlers */
-  server.on("/", handle_OnConnect);
+  server.on("/dashboard", handle_OnConnect);
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/RestoreProfile_1", handle_RestoreProfile_1);
   server.on("/RestoreProfile_2", handle_RestoreProfile_2);
@@ -570,8 +570,16 @@ void WiFi_init(void){
   server.on("/RandomEffectEnabled/on", handle_RandomEffectEnabled_On);
   server.on("/updateInternalVariables", HTTP_POST, handle_PostRequest); 
   
-  /* Begin Server */
-  server.begin();
-  Serial.print("WiFi connected! IP = ");
-  Serial.println(WiFi.localIP());
+  /* server already begun by hueBrdige */
+  //server.begin();
+  Serial.printf("Wifi connected, SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+  //Serial.println(WiFi.localIP());
+
+  // Setup Multicast DNS https://en.wikipedia.org/wiki/Multicast_DNS 
+  // You can open http://hexagono.local in Chrome on a desktop
+  Serial.println("Setup MDNS for http://hexagono.local");
+  if (!MDNS.begin("hexagono"))
+  {
+    Serial.println("Error setting up MDNS responder!");
+  }
 }
