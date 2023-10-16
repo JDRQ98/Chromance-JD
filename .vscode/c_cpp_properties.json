@@ -199,6 +199,8 @@
                 "C:\\Users\\jdrqu\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.0\\libraries\\WiFi\\src",
                 "C:\\Users\\jdrqu\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.0\\libraries\\Update\\src",
                 "C:\\Users\\jdrqu\\Documents\\Arduino\\libraries\\ArduinoOSC",
+                "C:\\Users\\jdrqu\\Documents\\Arduino\\libraries\\FauxmoESP\\src",
+                "C:\\Users\\jdrqu\\Documents\\Arduino\\libraries\\AsyncTCP\\src",
                 "C:\\Users\\jdrqu\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.0\\libraries\\EEPROM\\src",
                 "C:\\Users\\jdrqu\\Documents\\Arduino\\libraries\\ArduinoJson\\src",
                 "C:\\Users\\jdrqu\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.0\\libraries\\WebServer\\src",

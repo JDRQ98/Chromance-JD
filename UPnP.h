@@ -6,7 +6,7 @@
 #define UPnP_UDP_MULTICAST_PORT   1900
 #define UPnP_TCP_PORT             80
 
-#define DEBUG_UPnP                Serial
+//#define DEBUG_UPnP                Serial
 #ifdef DEBUG_UPnP
     #if defined(ARDUINO_ARCH_ESP32)
         #define DEBUG_MSG_UPnP(fmt, ...) { DEBUG_UPnP.printf_P((PGM_P) PSTR(fmt), ## __VA_ARGS__); }

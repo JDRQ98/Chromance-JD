@@ -35,9 +35,9 @@ void HueBridge::start()
 
     webServer.on("/description.xml", HTTP_GET, [this]() { handle_GetDescription(); });
     webServer.on("/api", HTTP_POST, [this]() { handle_PostDeviceType(); });
-    webServer.on("/api/2WLEDHardQrI3WHYTHoMcXHgEspsM8ZZRpSKtBQr/lights", HTTP_GET, [this]() { handle_GetState(); });
-    webServer.on("/api/2WLEDHardQrI3WHYTHoMcXHgEspsM8ZZRpSKtBQr/lights/1", HTTP_GET, [this]() { handle_GetState(); });
-    webServer.on("/api/2WLEDHardQrI3WHYTHoMcXHgEspsM8ZZRpSKtBQr/lights/1/state", HTTP_PUT, [this]() { handle_PutState(); });
+    webServer.on("/api/hex_user/lights", HTTP_GET, [this]() { handle_GetState(); });
+    webServer.on("/api/hex_user/lights/1", HTTP_GET, [this]() { handle_GetState(); });
+    webServer.on("/api/hex_user/lights/1/state", HTTP_PUT, [this]() { handle_PutState(); });
     webServer.on("/", HTTP_GET, [this]() { handle_root(); });
     webServer.on("/debug/clip.html", HTTP_GET, [this]() { handle_clip(); });
 
@@ -138,7 +138,7 @@ void HueBridge::handle_PostDeviceType()
     snprintf_P(
         buffer, sizeof(buffer),
         HUE_USER_JSON_TEMPLATE,
-        "2WLEDHardQrI3WHYTHoMcXHgEspsM8ZZRpSKtBQr");
+        "hex_user");
 
     // Handling devicetype request
     webServer.send(200, "application/json", buffer);
