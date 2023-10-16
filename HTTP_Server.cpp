@@ -7,6 +7,7 @@ using namespace std;
 #include "HTTP_Server.h" 
 #include "ripple.h"
 #include "EEP.h"
+#include "SimpleJson.h"
 
 
 // WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
@@ -271,22 +272,21 @@ String SendHTML(void) {
 /* HANDLER FUNCTIONS */
 
 void handle_PostRequest() {
-  if (server.method() == HTTP_POST){
     Serial.println("received new POST request!");
 
-    String message = "POST form contents:\n";
-    for (uint8_t i = 0; i < server.args(); i++) { message += "" + server.argName(i) + ": " + server.arg(i) + "\n "; }
-    Serial.println(message);
+    String body = server.arg("plain");
+    SimpleJson json;
+    json.parse(body);
 
-    int NumberofRipples = server.arg(0).toInt();
-    short DelayBetweenRipples = server.arg(1).toInt();
-    short RainbowDeltaPerTick = server.arg(2).toInt();
-    unsigned long RippleLifeSpan = server.arg(3).toInt();
-    float RippleSpeed = server.arg(4).toFloat();
-    int NumberofColors = server.arg(5).toInt();
-    int Behavior = server.arg(6).toInt();
-    int Direction = server.arg(7).toInt();
-    float Decay = server.arg(8).toFloat();
+    int NumberofRipples = json.hasPropery("NumberofRipples") ? json["NumberofRipples"].getInt() : GlobalParameters.currentNumberofRipples;
+    short DelayBetweenRipples = json.hasPropery("NumberofRipples") ? json["currentDelayBetweenRipples"].getInt() : GlobalParameters.currentDelayBetweenRipples;
+    short RainbowDeltaPerTick = json.hasPropery("NumberofRipples") ? json["currentRainbowDeltaPerTick"].getInt() : GlobalParameters.currentRainbowDeltaPerTick;
+    unsigned long RippleLifeSpan = json.hasPropery("NumberofRipples") ? json["currentRippleLifeSpan"].getInt() : GlobalParameters.currentRippleLifeSpan;
+    float RippleSpeed = json.hasPropery("NumberofRipples") ? json["currentRippleSpeed"].getFloat() : GlobalParameters.currentRippleSpeed;
+    int NumberofColors = json.hasPropery("NumberofRipples") ? json["currentNumberofColors"].getInt() : GlobalParameters.currentNumberofColors;
+    int Behavior = json.hasPropery("NumberofRipples") ? json["currentBehavior"].getInt() : GlobalParameters.currentBehavior;
+    int Direction = json.hasPropery("NumberofRipples") ? json["currentDirection"].getInt() : GlobalParameters.currentDirection;
+    float Decay = json.hasPropery("NumberofRipples") ? json["currentDecay"].getFloat() : GlobalParameters.currentDecay;
     
     if(NumberofRipples > 0 && NumberofRipples <= NUMBER_OF_RIPPLES){ /* new value received */
       Serial.print("received new NumberofRipples from POST request: ");
@@ -378,20 +378,19 @@ void handle_PostRequest() {
       Serial.println("new Decay not valid; discarded.");
     }
     
-    server.send(500, "text/html", SendHTML());
+    server.send(200, "text/html", SendHTML());
     server.send(200, "application/json", "{}");
-  }
 }
 
 void handle_OnConnect() {
   Serial.println("New client connected!");
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_ManualRipple() {
   Serial.println("Received manual ripple request");
   manualFireRipple = 1;
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_RestoreProfile_1() {
@@ -403,7 +402,7 @@ void handle_RestoreProfile_1() {
   } else{
 
   }
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_RestoreProfile_2() {
@@ -415,7 +414,7 @@ void handle_RestoreProfile_2() {
   } else{
 
   }
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_RestoreProfile_3() {
@@ -427,7 +426,7 @@ void handle_RestoreProfile_3() {
   } else{
 
   }
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_RestoreProfile_4() {
@@ -439,7 +438,7 @@ void handle_RestoreProfile_4() {
   } else{
 
   }
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_RestoreProfile_5() {
@@ -451,17 +450,17 @@ void handle_RestoreProfile_5() {
   } else{
 
   }
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_StoreProfile() {
   EEPROM_StoreProfile(0U);
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_DeleteProfile() {
   //EEPROM_RestoreProfile(0U);
-  server.send(500, "text/html", SendHTML());
+  server.send(200, "text/html", SendHTML());
 }
 
 void handle_SWreset() {
