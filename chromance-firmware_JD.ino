@@ -31,6 +31,33 @@ unsigned long lastRippleTime = 0;
 
 HueBridge hueBridge;
 
+void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
+{
+  Serial.printf_P("\nhandle_SetState id: %d, state: %s, bri: %d, ct: %d, hue: %d, sat: %d, mode: %s\n", 
+    id, state ? "true": "false", bri, ct, hue, sat, mode == 'h' ? "hs" : mode == 'c' ? "ct" : "xy");
+
+  //hueBridge.setState(id, state, bri, ct, hue, sat, mode); // set internal variables of the hueBridge class
+  GlobalParameters.loop_MasterFireRippleEnabled = state;
+
+  if ( ct == 383 ){
+    Serial.println("Warm white");
+  }
+
+  if ( hue == 0 && sat == 254 ){
+    Serial.println("Red");
+  }
+
+  if ( hue == 21845 && sat == 254 ){
+    Serial.println("Green");
+  }
+
+  if ( hue == 43690 && sat == 254 ){
+    Serial.println("Blue");
+  }
+}
+
+
+
 void setup() {
   Serial.begin(115200);
 
@@ -79,28 +106,6 @@ void setup() {
 
 
   //EEPROM_Read_GlobalParameters();
-}
-
-void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
-{
-  Serial.printf_P("\nhandle_SetState id: %d, state: %s, bri: %d, ct: %d, hue: %d, sat: %d, mode: %s\n", 
-    id, state ? "true": "false", bri, ct, hue, sat, mode == 'h' ? "hs" : mode == 'c' ? "ct" : "xy");
-
-  if ( ct == 383 ){
-    Serial.println("Warm white");
-  }
-
-  if ( hue == 0 && sat == 254 ){
-    Serial.println("Red");
-  }
-
-  if ( hue == 21845 && sat == 254 ){
-    Serial.println("Green");
-  }
-
-  if ( hue == 43690 && sat == 254 ){
-    Serial.println("Blue");
-  }
 }
 
 

@@ -4,7 +4,7 @@
 #include <WebServer.h>
 #include "UPnP.h"
 
-#define DEBUG_HUE                Serial
+//#define DEBUG_HUE                Serial
 #ifdef DEBUG_HUE
     #if defined(ARDUINO_ARCH_ESP32)
         #define DEBUG_MSG_HUE(fmt, ...) { DEBUG_HUE.printf_P((PGM_P) PSTR(fmt), ## __VA_ARGS__); }

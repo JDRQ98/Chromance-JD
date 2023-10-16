@@ -5,6 +5,11 @@
 #include <ESPmDNS.h>
 #include "HueBridge.h"
 
+PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
+    "{\"success\":{\"/lights/%d/state/on\":%s}},"
+    "{\"success\":{\"/lights/%d/state/bri\":%d}}"   // not needed?
+"]";
+
 /* Variables used for control over web server */
 typedef struct {
   boolean loop_MasterFireRippleEnabled;
