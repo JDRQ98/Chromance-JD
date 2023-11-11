@@ -14,8 +14,8 @@ using namespace std;
 const char* ssid = "TP-Link-150";
 const char* password = "Cenote#150";
 
-const IPAddress ip(192, 168, 0, 241);  // IP address that THIS DEVICE should request
-const IPAddress gateway(192, 168, 0, 1);  // Your router
+const IPAddress ip(192, 168, 1, 241);  // IP address that THIS DEVICE should request
+const IPAddress gateway(192, 168, 1, 250);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
 
 #define server hueBridge.webServer //Open port number 80 (HTTP)
@@ -27,31 +27,35 @@ const long timeout = 2000;
 // Auxiliar variables to store the current output state
 GlobalParameters_struct GlobalParameters = { 
   .loop_MasterFireRippleEnabled = 1,
-  .loop_CenterFireRippleEnabled = 0,
+  .loop_CenterFireRippleEnabled = 1,
   .loop_CubeFireRippleEnabled = 0,
   .loop_QuadFireRippleEnabled = 0,
   .loop_BorderFireRippleEnabled = 0,
-  .loop_RandomEffectEnabled = 1,
-  .currentNumberofRipples = NUMBER_OF_RIPPLES,
-  .currentNumberofColors = 7,
-  .currentBehavior = feisty,
-  .currentDirection = ALL_DIRECTIONS,
-  .currentDelayBetweenRipples = 3000, /* in milliseconds */
-  .currentRainbowDeltaPerTick = 200, /* units: hue */
-  .currentRippleLifeSpan = 3000, /* in milliseconds */
-  .currentRippleSpeed = 0.5, 
-  .currentDecay = 0.985,  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
+  .loop_RandomEffectEnabled = 0,
+  .currentNumberofRipples = HTTP_CURRENTNUMBEROFRIPPLES_DEFAULT,
+  .currentNumberofColors = HTTP_CURRENTNUMBEROFCOLORS_DEFAULT,
+  .currentBehavior = HTTP_CURRENTBEHAVIOR_DEFAULT,
+  .currentDirection = HTTP_CURRENTDIRECTION_DEFAULT,
+  .currentDelayBetweenRipples = HTTP_CURRENTDELAYBETWEENRIPPLES_DEFAULT, /* in milliseconds */
+  .currentRainbowDeltaPerTick = HTTP_CURRENTRAINBOWDELTAPERTICK_DEFAULT, /* units: hue */
+  .currentRippleLifeSpan = HTTP_CURRENTRIPPLELIFESPAN_DEFAULT, /* in milliseconds */
+  .currentRippleSpeed = HTTP_CURRENTRIPPLESPEED_DEFAULT, 
+  .currentDecay = HTTP_CURRENTDECAY_DEFAULT,  // Multiply all LED's by this amount each tick to create fancy fading tails 0.972 good value for rainbow
 };
 boolean manualFireRipple = 0;
-unsigned int currentProfile = 0;
+unsigned int currentSelectedProfile = 0;
+unsigned int currentLoadedProfile = -1;
 
 String SendHTML_Dashboard(void) {
 // Display the HTML web page
 String ptr = "<!DOCTYPE html> <html>\n";
 ptr += "<html>\n";
 ptr += "<head>\n";
-ptr += "  <meta http-equiv='content-type' content='text/html; charset=windows-1252'>\n";
+ptr += "  <meta http-equiv='content-type' content='text/html; charset=UTF-8'>\n";
 ptr += "  <meta name='viewport' content='width=device-width, initial-scale=1'>\n";
+ptr += "  <meta http-equiv='Cache-Control' content='no-cache, no-store, must-revalidate'>\n";
+ptr += "  <meta http-equiv='Pragma' content='no-cache'>\n";
+ptr += "  <meta http-equiv='Expires' content='0'>\n";
 ptr += "  <link rel='icon' href='data:,'>\n";
 ptr += "  <style>\n";
 ptr += "    html {\n";
@@ -72,38 +76,43 @@ ptr += "      margin: 2px;\n";
 ptr += "      cursor: pointer;\n";
 ptr += "    }\n";
 ptr += "\n";
+ptr += "    .preset {\n";
+ptr += "      background-color: #4CAF50;\n";
+ptr += "      border: none;\n";
+ptr += "      color: white;\n";
+ptr += "      padding: 8px 20px;\n";
+ptr += "      text-decoration: none;\n";
+ptr += "      font-size: 14px;\n";
+ptr += "      margin: 2px;\n";
+ptr += "      cursor: pointer;\n";
+ptr += "    }\n";
+ptr += "\n";
 ptr += "    .button2 {\n";
 ptr += "      background-color: #555555;\n";
 ptr += "    }\n";
 ptr += "\n";
-ptr += "    .InactiveProfile {\n";
-ptr += "      background-color: gray;\n";
+ptr += "    .Profile {\n";
 ptr += "      font-size: 30px;\n";
 ptr += "      color: white;\n";
 ptr += "      padding: 25px 25px;\n";
 ptr += "      margin: 5px;\n";
 ptr += "      border: none;\n";
 ptr += "      cursor: pointer;\n";
+ptr += "    }\n";
+ptr += "    .InactiveProfile {\n";
+ptr += "      background-color: gray;\n";
 ptr += "    }\n";
 ptr += "\n";
 ptr += "    .ActiveProfile {\n";
 ptr += "      background-color: #4CAF50;\n";
-ptr += "      font-size: 30px;\n";
-ptr += "      color: white;\n";
-ptr += "      padding: 25px 25px;\n";
-ptr += "      margin: 5px;\n";
-ptr += "      border: none;\n";
-ptr += "      cursor: pointer;\n";
 ptr += "    }\n";
 ptr += "\n";
 ptr += "    .SelectedProfile {\n";
-ptr += "      background-color: green;\n";
-ptr += "      font-size: 30px;\n";
-ptr += "      color: white;\n";
 ptr += "      padding: 30px 30px;\n";
-ptr += "      margin: 5px;\n";
-ptr += "      border: none;\n";
-ptr += "      cursor: pointer;\n";
+ptr += "    }\n";
+ptr += "\n";
+ptr += "    .LoadedProfile {\n";
+ptr += "      background-color: green;\n";
 ptr += "    }\n";
 ptr += "\n";
 ptr += "    form div {\n";
@@ -125,8 +134,189 @@ ptr += "  </style>\n";
 ptr += "</head>\n";
 ptr += "<body>\n";
 ptr += "  <h1>ESP32 Web Server</h1>\n";
+/****************** BEGINNING OF PROFILE MANAGEMENT ******************/
+  ptr += "<section id=\"profileManagement\"\n>";
+  ptr += "    <h1>User Profiles</h1>\n";
+  ptr += "<p> Current profile selected: " + String(currentSelectedProfile + 1) + "</p>\n";
+  if(currentLoadedProfile == -1) ptr += "<p> Last profile loaded: N/A </p\n>";
+  else ptr += "<p> Last profile loaded: " + String(currentLoadedProfile + 1) + "</p>\n";
+  ptr += "<div\n>";
+  ptr += "<div id=\"profiles\"\n>";
+  /* button 1*/
+  ptr += "<button onclick='selectProfile(0)' class='Profile ";
+  if (ProfilesAvailable[0] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 0) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 0) ptr += "SelectedProfile ";
+  ptr += "'>#1</button></a>\n";
+  /* button 2*/
+  ptr += "<button onclick='selectProfile(1)' class='Profile ";
+  if (ProfilesAvailable[1] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 1) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 1) ptr += "SelectedProfile ";
+  ptr += "'>#2</button></a>\n";
+  /* button 3*/
+  ptr += "<button onclick='selectProfile(2)' class='Profile ";
+  if (ProfilesAvailable[2] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 2) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 2) ptr += "SelectedProfile ";
+  ptr += "'>#3</button></a>\n";
+  /* button 4*/
+  ptr += "<button onclick='selectProfile(3)' class='Profile ";
+  if (ProfilesAvailable[3] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 3) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 3) ptr += "SelectedProfile ";
+  ptr += "'>#4</button></a>\n";
+  /* button 5*/
+  ptr += "<button onclick='selectProfile(4)' class='Profile ";
+  if (ProfilesAvailable[4] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 4) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 4) ptr += "SelectedProfile ";
+  ptr += "'>#5</button></a>\n";
+  ptr += "</div\n>";
+  ptr += "      <div>\n";
+  ptr += "          <button class='button' onclick = 'saveCurrentSelectedProfile()'> Save </button>\n";
+  ptr += "          <button class='button' onclick = 'loadCurrentSelectedProfile()'> Load </button>\n";
+  ptr += "          <button class='button' style='background-color: red;' onclick = 'deleteCurrentSelectedProfile()'> Delete </button>\n";
+  ptr += "      </div>\n";
+  ptr += "</div\n>";
+    ptr += "    <h1> Presets</ h1>\n ";
+  ptr += "      <div>\n";
+  ptr += "        <button onclick='selectPreset(1)' class='preset'>Restore default settings</button>\n";
+  ptr += "        <button onclick='selectPreset(2)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(3)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
+  ptr += "      </div>\n";
+  ptr += "</section\n>";
+  /****************** END OF PROFILE MANAGEMENT ******************/
+  /****************** BEGINNING USER INPUT ******************/
+  ptr += "  <section id='userinput'>\n";
+ptr += "    <form action='/updateInternalVariables' method='post'>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='NumberofRipples'>Enter the number of ripples [" + String(HTTP_CURRENTNUMBEROFRIPPLES_MIN) + " - " + String(HTTP_CURRENTNUMBEROFRIPPLES_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentNumberofRipples' name='NumberofRipples' min='" + String(HTTP_CURRENTNUMBEROFRIPPLES_MIN) + "' max='" + String(HTTP_CURRENTNUMBEROFRIPPLES_MAX) + "' value='" + String(GlobalParameters.currentNumberofRipples) + "'>\n";
+ptr += "        <span id='currentNumberofRipples_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='currentDelayBetweenRipples'>Enter delay between ripples in ms [" + String(HTTP_CURRENTDELAYBETWEENRIPPLES_MIN) + " - " + String(HTTP_CURRENTDELAYBETWEENRIPPLES_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentDelayBetweenRipples' name='currentDelayBetweenRipples' min='" + String(HTTP_CURRENTDELAYBETWEENRIPPLES_MIN) + "' max='" + String(HTTP_CURRENTDELAYBETWEENRIPPLES_MAX) + "' value='" + String(GlobalParameters.currentDelayBetweenRipples) + "'>\n";
+ptr += "        <span id='currentDelayBetweenRipples_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='currentRainbowDeltaPerTick'>Enter rainbow delta per tick in hue [" + String(HTTP_CURRENTRAINBOWDELTAPERTICK_MIN) + " - " + String(HTTP_CURRENTRAINBOWDELTAPERTICK_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentRainbowDeltaPerTick' name='currentRainbowDeltaPerTick' min='" + String(HTTP_CURRENTRAINBOWDELTAPERTICK_MIN) + "' max='" + String(HTTP_CURRENTRAINBOWDELTAPERTICK_MAX) + "' value='" + String(GlobalParameters.currentRainbowDeltaPerTick) + "'>\n";
+ptr += "        <span id='currentRainbowDeltaPerTick_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='currentRippleLifeSpan'>Enter ripple life span in ms [" + String(HTTP_CURRENTRIPPLELIFESPAN_MIN) + " - " + String(HTTP_CURRENTRIPPLELIFESPAN_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentRippleLifeSpan' name='currentRippleLifeSpan' min='" + String(HTTP_CURRENTRIPPLELIFESPAN_MIN) + "' max='" + String(HTTP_CURRENTRIPPLELIFESPAN_MAX) + "' value='" + String(GlobalParameters.currentRippleLifeSpan) + "'>\n";
+ptr += "        <span id='currentRippleLifeSpan_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='currentRippleSpeed'>Enter ripple speed (float) [" + String(HTTP_CURRENTRIPPLESPEED_MIN) + " - " + String(HTTP_CURRENTRIPPLESPEED_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentRippleSpeed' name='currentRippleSpeed' min='" + String(HTTP_CURRENTRIPPLESPEED_MIN*100) + "' max='" + String(HTTP_CURRENTRIPPLESPEED_MAX*100) + "' value='" + String(GlobalParameters.currentRippleSpeed*100) + "'>\n";
+ptr += "        <span id='currentRippleSpeed_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div class='rangeslider'> \n";
+ptr += "        <label for='currentNumberofColors'>Enter the desired number of colors [" + String(HTTP_CURRENTNUMBEROFCOLORS_MIN) + " - " + String(HTTP_CURRENTNUMBEROFCOLORS_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentNumberofColors' name='currentNumberofColors' min='" + String(HTTP_CURRENTNUMBEROFCOLORS_MIN) + "' max='" + String(HTTP_CURRENTNUMBEROFCOLORS_MAX) + "' value='" + String(GlobalParameters.currentNumberofColors) + "'>\n";
+ptr += "        <span id='currentNumberofColors_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div>\n";
+ptr += "        <label for='currentDecay'>Enter decay per tick [" + String(HTTP_CURRENTDECAY_MIN) + " - " + String(HTTP_CURRENTDECAY_MAX) + "]:</label>\n";
+ptr += "        <input type='range' id='currentDecay' name='currentDecay' min='" + String(HTTP_CURRENTDECAY_MIN*1000) + "' max='" + String(HTTP_CURRENTDECAY_MAX*1000) + "' value='" + String(GlobalParameters.currentDecay*1000) + "'>\n";
+ptr += "        <span id='currentDecay_display'></span>\n";
+ptr += "      </div>\n";
+ptr += "      <div>\n";
+ptr += "        <label for='currentBehavior'>Enter the desired behavior:</label>\n";
+ptr += "        <select id='currentBehavior' name='currentBehavior'>\n";
+if(GlobalParameters.currentBehavior == 0)
+  ptr += "          <option value='0' selected='selected'>Mild</option>\n";
+else{
+  ptr += "          <option value='0'>Mild</option>\n"; 
+}
+if(GlobalParameters.currentBehavior == 1)
+  ptr += "          <option value='1' selected='selected'>Normal</option>\n";
+else{
+  ptr += "          <option value='1'>Normal</option>\n"; 
+}
+if(GlobalParameters.currentBehavior == 2)
+  ptr += "          <option value='2' selected='selected'>Agressive</option>\n";
+else{
+  ptr += "          <option value='2'>Agressive</option>\n"; 
+}
+if(GlobalParameters.currentBehavior == 3)
+  ptr += "          <option value='3' selected='selected'>Always turns right</option>\n";
+else{
+  ptr += "          <option value='3'>Always turns right</option>\n"; 
+}
+if(GlobalParameters.currentBehavior == 4)
+  ptr += "          <option value='4' selected='selected'>Always turns left</option>\n";
+else{
+  ptr += "          <option value='4'>Always turns left</option>\n"; 
+}
+ptr += "        </select>\n";
+ptr += "      </div>\n";
+ptr += "      <div>\n";
+ptr += "        <label for='currentDirection'>Enter ripple direction:</label>\n";
+ptr += "        <select id='currentDirection' name='currentDirection'>\n";
+if(GlobalParameters.currentDirection == -1)
+  ptr += "          <option value='-1' selected='selected'>All directions</option>\n";
+else{
+  ptr += "          <option value='-1'>All directions</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 0)
+  ptr += "          <option value='0' selected='selected'>0°</option>\n";
+else{
+  ptr += "          <option value='0'>0°</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 1)
+  ptr += "          <option value='1' selected='selected'>-60°</option>\n";
+else{
+  ptr += "          <option value='1'>60°</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 2)
+  ptr += "          <option value='2' selected='selected'>-120°</option>\n";
+else{
+  ptr += "          <option value='2'>120°</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 3)
+  ptr += "          <option value='3' selected='selected'>180°</option>\n";
+else{
+  ptr += "          <option value='3'>180°</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 4)
+  ptr += "          <option value='4' selected='selected'>120°</option>\n";
+else{
+  ptr += "          <option value='4'>-120°</option>\n"; 
+}
+if(GlobalParameters.currentDirection == 5)
+  ptr += "          <option value='5' selected='selected'>60°</option>\n";
+else{
+  ptr += "          <option value='5'>-60°</option>\n"; 
+}
+/* random direction not supported yet, TBD.
+if(GlobalParameters.currentDirection == 6)
+  ptr += "          <option value='6' selected='selected'>Random direction</option>\n";
+else{
+  ptr += "          <option value='6'>Random direction</option>\n"; 
+}
+*/
+ptr += "        </select>\n";
+ptr += "      </div>      \n";
+ptr += "      <div>\n";
+ptr += "      </div>\n";
+ptr += "        <p><button class=\"button\" type='button' onclick='sendData()'>Submit</button></p>\n";
+ptr += "    </form>\n";
+ptr += "  </section>\n";
 ptr += "  <p>Fire Manual Ripple</p>\n";
-ptr += "  <p><a href='http://192.168.0.241/ManualRipple'><button class='button'>Fire!</button></a></p>\n";
+ptr += "  <p><a href='http://192.168.1.241/ManualRipple'><button class='button'>Fire!</button></a></p>\n";
+/****************** END OF USER INPUT ******************/
 /****************** BEGINNING OF CHECKBOXES ******************/
   ptr += "<section id=\"checkboxes\"\n>";
   /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
@@ -167,253 +357,206 @@ ptr += "  <p><a href='http://192.168.0.241/ManualRipple'><button class='button'>
   }
   ptr += "</section\n>";
 /****************** END OF CHECKBOXES ******************/
-ptr += "  <section id='userinput'>\n";
-ptr += "    <form action='/updateInternalVariables' method='post'>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='NumberofRipples'>Enter the number of ripples [1 - 100]:</label>\n";
-ptr += "        <input type='range' id='currentNumberofRipples' name='NumberofRipples' min='1' max='99' value='99'>\n";
-ptr += "        <span id='currentNumberofRipples_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='currentDelayBetweenRipples'>Enter delay between ripples in ms [1 - 20000]:</label>\n";
-ptr += "        <input type='range' id='currentDelayBetweenRipples' name='currentDelayBetweenRipples' min='1' max='20000' value='6980'>\n";
-ptr += "        <span id='currentDelayBetweenRipples_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='currentRainbowDeltaPerTick'>Enter rainbow delta per tick in hue [1 - 20000]:</label>\n";
-ptr += "        <input type='range' id='currentRainbowDeltaPerTick' name='currentRainbowDeltaPerTick' min='1' max='20000' value='200'>\n";
-ptr += "        <span id='currentRainbowDeltaPerTick_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='currentRippleLifeSpan'>Enter ripple life span in ms [1 - 20000]:</label>\n";
-ptr += "        <input type='range' id='currentRippleLifeSpan' name='currentRippleLifeSpan' min='1' max='20000' value='3000'>\n";
-ptr += "        <span id='currentRippleLifeSpan_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='currentRippleSpeed'>Enter ripple speed (float) [0.01 - 10]:</label>\n";
-ptr += "        <input type='range' id='currentRippleSpeed' name='currentRippleSpeed' min='1' max='1000' value='1'>\n";
-ptr += "        <span id='currentRippleSpeed_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div class='rangeslider'> \n";
-ptr += "        <label for='currentNumberofColors'>Enter the desired number of colors [1 - 25]:</label>\n";
-ptr += "        <input type='range' id='currentNumberofColors' name='currentNumberofColors' min='1' max='25' value='7'>\n";
-ptr += "        <span id='currentNumberofColors_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div>\n";
-ptr += "        <label for='currentDecay'>Enter decay per tick [0.5 - 1]:</label>\n";
-ptr += "        <input type='range' id='currentDecay' name='currentDecay' min='500' max='1000' value='500'>\n";
-ptr += "        <span id='currentDecay_display'></span>\n";
-ptr += "      </div>\n";
-ptr += "      <div>\n";
-ptr += "        <label for='currentBehavior'>Enter the desired behavior [0-2 = less to more aggro; 3 = alwaysRight; 4 = alwaysLeft]:</label>\n";
-ptr += "        <select id='currentBehavior' name='currentBehavior'>\n";
-ptr += "          <option value='0'>Mild</option>\n";
-ptr += "          <option value='1' selected='selected'>Normal</option>\n";
-ptr += "          <option value='2'>Agressive</option>\n";
-ptr += "          <option value='3'>Always turns right</option>\n";
-ptr += "          <option value='4'>Always turns left</option>\n";
-ptr += "        </select>\n";
-ptr += "      </div>\n";
-ptr += "      <div>\n";
-ptr += "        <label for='currentDirection'>Enter ripple direction [-1 = All directions; 0-5 = direction clockwise starting at 12:00; 6 = random direction]:</label>\n";
-ptr += "        <select id='currentDirection' name='currentDirection'>\n";
-ptr += "          <option value='-1' selected='selected'>All directions</option>\n";
-ptr += "          <option value='0'>0°</option>\n";
-ptr += "          <option value='1'>60</option>\n";
-ptr += "          <option value='2'>120°</option>\n";
-ptr += "          <option value='3'>180°</option>\n";
-ptr += "          <option value='4'>-120°</option>\n";
-ptr += "          <option value='5'>-60°</option>\n";
-ptr += "          <option value='6'>Random direction</option>\n";
-ptr += "        </select>\n";
-ptr += "      </div>      \n";
-ptr += "      <div>\n";
-ptr += "        <button type='button' onclick='sendData()'>Submit</button>\n";
-ptr += "      </div>\n";
-ptr += "    </form>\n";
-ptr += "  </section>\n";
-/****************** BEGINNING OF PROFILE MANAGEMENT ******************/
-  ptr += "<section id=\"userinput\"\n>";
-  ptr += "<h1> Profiles </h1\n>";
-    ptr += "<p> Current profile: " + String(currentProfile) + "</p\n>";
-    ptr += "<div\n>";
-      ptr += "<div id=\"profiles\"\n>";
-        /* button 1*/
-        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_1\"><button ";
-        if( (currentProfile == 0) && (ProfilesAvailable[0] == 1U)) ptr += "class=\"SelectedProfile\"";
-        else if (ProfilesAvailable[0] == 1U) ptr += "class=\"ActiveProfile\"";
-        else ptr += "class=\"InactiveProfile\"";
-        ptr += ">#1</button></a>\n";
-        /* button 2*/
-        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_2\"><button ";
-        if( (currentProfile == 1) && (ProfilesAvailable[1] == 1U)) ptr += "class=\"SelectedProfile\"";
-        else if (ProfilesAvailable[1] == 1U) ptr += "class=\"ActiveProfile\"";
-        else ptr += "class=\"InactiveProfile\"";
-        ptr += ">#2</button></a>\n";
-        /* button 3*/
-        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_3\"><button ";
-        if( (currentProfile == 2) && (ProfilesAvailable[2] == 1U)) ptr += "class=\"SelectedProfile\"";
-        else if (ProfilesAvailable[2] == 1U) ptr += "class=\"ActiveProfile\"";
-        else ptr += "class=\"InactiveProfile\"";
-        ptr += ">#3</button></a>\n";
-        /* button 4*/
-        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_4\"><button ";
-        if( (currentProfile == 3) && (ProfilesAvailable[3] == 1U)) ptr += "class=\"SelectedProfile\"";
-        else if (ProfilesAvailable[3] == 1U) ptr += "class=\"ActiveProfile\"";
-        else ptr += "class=\"InactiveProfile\"";
-        ptr += ">#4</button></a>\n";
-        /* button 5*/
-        ptr += "<a href=\"http://192.168.0.241/RestoreProfile_5\"><button ";
-        if( (currentProfile == 4) && (ProfilesAvailable[4] == 1U)) ptr += "class=\"SelectedProfile\"";
-        else if (ProfilesAvailable[4] == 1U) ptr += "class=\"ActiveProfile\"";
-        else ptr += "class=\"InactiveProfile\"";
-        ptr += ">#5</button></a>\n";
-      ptr += "</div\n>";
-      ptr += "<div\n>";
-        ptr += "<a href=\"http://192.168.0.241/StoreProfile\"><button class=\"button\">Store Profile</button></a\n>";
-        ptr += "<a href=\"http://192.168.0.241/DeleteProfile\"><button class=\"button\">Delete Profile</button></a\n>";
-      ptr += "</div\n>";
-    ptr += "</div\n>";
-  ptr += "</section\n>";
-/****************** END OF PROFILE MANAGEMENT ******************/
-ptr += "  <p><a href='http://192.168.0.241/SWreset'><button class='button'>Software reset</button></a></p>\n";
-ptr += "  <script>\n";
-ptr += "\n";
-ptr += "// START OF SLIDER SCRIPTS\n";
-ptr += "var currentNumberofRipples_slider = document.getElementById('currentNumberofRipples'); \n";
-ptr += "var currentNumberofRipples_var = currentNumberofRipples_slider.value;      \n";
-ptr += "var outpcurrentNumberofRipples_display = document.getElementById('currentNumberofRipples_display'); \n";
-ptr += "outpcurrentNumberofRipples_display.innerHTML = currentNumberofRipples_var;\n";
-ptr += "currentNumberofRipples_slider.oninput = function() {\n";
-ptr += "  currentNumberofRipples_var = this.value;\n";
-ptr += "  outpcurrentNumberofRipples_display.innerHTML = currentNumberofRipples_var;\n";
-ptr += "}\n";
-ptr += "  \n";
-ptr += "var currentDelayBetweenRipples_slider = document.getElementById('currentDelayBetweenRipples'); \n";
-ptr += "var currentDelayBetweenRipples_var = currentDelayBetweenRipples_slider.value;      \n";
-ptr += "var outpcurrentDelayBetweenRipples_display = document.getElementById('currentDelayBetweenRipples_display'); \n";
-ptr += "outpcurrentDelayBetweenRipples_display.innerHTML = currentDelayBetweenRipples_var;\n";
-ptr += "currentDelayBetweenRipples_slider.oninput = function() {\n";
-ptr += "  currentDelayBetweenRipples_var = this.value;\n";
-ptr += "  outpcurrentDelayBetweenRipples_display.innerHTML = currentDelayBetweenRipples_var;\n";
-ptr += "}\n";
-ptr += "                   \n";
-ptr += "var currentRainbowDeltaPerTick_slider = document.getElementById('currentRainbowDeltaPerTick'); \n";
-ptr += "var currentRainbowDeltaPerTick_var = currentRainbowDeltaPerTick_slider.value;      \n";
-ptr += "var outpcurrentRainbowDeltaPerTick_display = document.getElementById('currentRainbowDeltaPerTick_display'); \n";
-ptr += "outpcurrentRainbowDeltaPerTick_display.innerHTML = currentRainbowDeltaPerTick_var;\n";
-ptr += "currentRainbowDeltaPerTick_slider.oninput = function() {\n";
-ptr += "  currentRainbowDeltaPerTick_var = this.value;\n";
-ptr += "    outpcurrentRainbowDeltaPerTick_display.innerHTML = currentRainbowDeltaPerTick_var;\n";
-ptr += "}\n";
-ptr += "                 \n";
-ptr += "var currentRippleLifeSpan_slider = document.getElementById('currentRippleLifeSpan'); \n";
-ptr += "var currentRippleLifeSpan_var = currentRippleLifeSpan_slider.value;      \n";
-ptr += "var outpcurrentRippleLifeSpan_display = document.getElementById('currentRippleLifeSpan_display'); \n";
-ptr += "outpcurrentRippleLifeSpan_display.innerHTML = currentRippleLifeSpan_var;\n";
-ptr += "currentRippleLifeSpan_slider.oninput = function() {\n";
-ptr += "  currentRippleLifeSpan_var = this.value;\n";
-ptr += "  outpcurrentRippleLifeSpan_display.innerHTML = currentRippleLifeSpan_var;\n";
-ptr += "}\n";
-ptr += "\n";
-ptr += "var currentRippleSpeed_slider = document.getElementById('currentRippleSpeed'); \n";
-ptr += "var currentRippleSpeed_var = currentRippleSpeed_slider.value;                     \n";
-ptr += "var outpcurrentRippleSpeed_display = document.getElementById('currentRippleSpeed_display'); \n";
-ptr += "outpcurrentRippleSpeed_display.innerHTML = currentRippleSpeed_var/100;\n";
-ptr += "currentRippleSpeed_slider.oninput = function() {\n";
-ptr += "  currentRippleSpeed_var = this.value/100; //scale value down by 100\n";
-ptr += "    outpcurrentRippleSpeed_display.innerHTML = currentRippleSpeed_var;\n";
-ptr += "}\n";
-ptr += "\n";
-ptr += "var currentNumberofColors_slider = document.getElementById('currentNumberofColors'); \n";
-ptr += "var currentNumberofColors_var = currentNumberofColors_slider.value;             \n";
-ptr += "var outpcurrentNumberofColors_display = document.getElementById('currentNumberofColors_display'); \n";
-ptr += "outpcurrentNumberofColors_display.innerHTML = currentNumberofColors_var;\n";
-ptr += "currentNumberofColors_slider.oninput = function() {\n";
-ptr += "  currentNumberofColors_var = this.value;\n";
-ptr += "    outpcurrentNumberofColors_display.innerHTML = currentNumberofColors_var;\n";
-ptr += "}\n";
-ptr += "\n";
-ptr += "var currentDecay_slider = document.getElementById('currentDecay'); \n";
-ptr += "var currentDecay_var = currentDecay_slider.value;                        \n";
-ptr += "var outpcurrentDecay_display = document.getElementById('currentDecay_display'); \n";
-ptr += "outpcurrentDecay_display.innerHTML = currentDecay_var/1000;\n";
-ptr += "currentDecay_slider.oninput = function() {\n";
-ptr += "  currentDecay_var = this.value/1000; //scale value down by 1000\n";
-ptr += "    outpcurrentDecay_display.innerHTML = currentDecay_var;\n";
-ptr += "}\n";
-ptr += "// END OF SLIDER SCRIPTS\n";
-ptr += "\n";
-ptr += "  // used to update internal variables\n";
-ptr += "  function sendData() {\n";
-ptr += "    // Include the logic to send the data to the server\n";
-ptr += "    // You can access the values with document.getElementById('elementId').value\n";
-ptr += "    data = {};\n";
-ptr += "    // Get the value of the sliders\n";
-ptr += "    data.currentNumberofRipples = parseInt(currentNumberofRipples_slider.value); \n";
-ptr += "    data.currentDelayBetweenRipples = parseInt(currentDelayBetweenRipples_slider.value); \n";
-ptr += "    data.currentRainbowDeltaPerTick = parseInt(currentRainbowDeltaPerTick_slider.value); \n";
-ptr += "    data.currentRippleLifeSpan = parseInt(currentRippleLifeSpan_slider.value); \n";
-ptr += "    data.currentRippleSpeed = parseFloat(currentRippleSpeed_slider.value); \n";
-ptr += "    data.currentNumberofColors = parseInt(currentNumberofColors_slider.value); \n";
-ptr += "    data.currentDecay = parseFloat(currentDecay_slider.value); \n";
-ptr += "    data.currentBehavior = parseInt(document.getElementById('currentBehavior').value); \n";
-ptr += "    data.currentDirection = parseInt(document.getElementById('currentDirection').value); \n";
-ptr += "    \n";
-ptr += "\n";
-ptr += "    var xhr = new XMLHttpRequest();\n";
-ptr += "    xhr.open('POST', '/updateInternalVariables', true);\n";
-ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
-ptr += "    xhr.send(JSON.stringify(data));\n";
-ptr += "  }\n";
-ptr += "\n";
-ptr += "    function toggleMasterAutoRipple(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/MasterFireRippleEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/MasterFireRippleEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "    function toggleCenterAutoRipple(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/CenterFireRippleEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/CenterFireRippleEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "    function toggleCubeAutoRipple(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/CubeFireRippleEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/CubeFireRippleEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "    function toggleQuadAutoRipple(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/QuadFireRippleEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/QuadFireRippleEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "    function toggleBorderAutoRipple(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/BorderFireRippleEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/BorderFireRippleEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "    function toggleRandomEffect(checkbox) {\n";
-ptr += "      if (checkbox.checked) {\n";
-ptr += "        fetch('/RandomEffectEnabled/on');\n";
-ptr += "      } else {\n";
-ptr += "        fetch('/RandomEffectEnabled/off');\n";
-ptr += "      }\n";
-ptr += "    }\n";
-ptr += "  </script>\n";
-ptr += "</body>\n";
-ptr += "</html>\n";
-ptr += "\n";
-return ptr;
+  ptr += "  <script>\n";
+  ptr += "\n";
+  ptr += "// START OF SLIDER SCRIPTS\n";
+  ptr += "var currentNumberofRipples_slider = document.getElementById('currentNumberofRipples'); \n";
+  ptr += "var currentNumberofRipples_var = currentNumberofRipples_slider.value;      \n";
+  ptr += "var outpcurrentNumberofRipples_display = document.getElementById('currentNumberofRipples_display'); \n";
+  ptr += "outpcurrentNumberofRipples_display.innerHTML = currentNumberofRipples_var;\n";
+  ptr += "currentNumberofRipples_slider.oninput = function() {\n";
+  ptr += "  currentNumberofRipples_var = this.value;\n";
+  ptr += "  outpcurrentNumberofRipples_display.innerHTML = currentNumberofRipples_var;\n";
+  ptr += "}\n";
+  ptr += "  \n";
+  ptr += "var currentDelayBetweenRipples_slider = document.getElementById('currentDelayBetweenRipples'); \n";
+  ptr += "var currentDelayBetweenRipples_var = currentDelayBetweenRipples_slider.value;      \n";
+  ptr += "var outpcurrentDelayBetweenRipples_display = document.getElementById('currentDelayBetweenRipples_display'); \n";
+  ptr += "outpcurrentDelayBetweenRipples_display.innerHTML = currentDelayBetweenRipples_var;\n";
+  ptr += "currentDelayBetweenRipples_slider.oninput = function() {\n";
+  ptr += "  currentDelayBetweenRipples_var = this.value;\n";
+  ptr += "  outpcurrentDelayBetweenRipples_display.innerHTML = currentDelayBetweenRipples_var;\n";
+  ptr += "}\n";
+  ptr += "                   \n";
+  ptr += "var currentRainbowDeltaPerTick_slider = document.getElementById('currentRainbowDeltaPerTick'); \n";
+  ptr += "var currentRainbowDeltaPerTick_var = currentRainbowDeltaPerTick_slider.value;      \n";
+  ptr += "var outpcurrentRainbowDeltaPerTick_display = document.getElementById('currentRainbowDeltaPerTick_display'); \n";
+  ptr += "outpcurrentRainbowDeltaPerTick_display.innerHTML = currentRainbowDeltaPerTick_var;\n";
+  ptr += "currentRainbowDeltaPerTick_slider.oninput = function() {\n";
+  ptr += "  currentRainbowDeltaPerTick_var = this.value;\n";
+  ptr += "    outpcurrentRainbowDeltaPerTick_display.innerHTML = currentRainbowDeltaPerTick_var;\n";
+  ptr += "}\n";
+  ptr += "                 \n";
+  ptr += "var currentRippleLifeSpan_slider = document.getElementById('currentRippleLifeSpan'); \n";
+  ptr += "var currentRippleLifeSpan_var = currentRippleLifeSpan_slider.value;      \n";
+  ptr += "var outpcurrentRippleLifeSpan_display = document.getElementById('currentRippleLifeSpan_display'); \n";
+  ptr += "outpcurrentRippleLifeSpan_display.innerHTML = currentRippleLifeSpan_var;\n";
+  ptr += "currentRippleLifeSpan_slider.oninput = function() {\n";
+  ptr += "  currentRippleLifeSpan_var = this.value;\n";
+  ptr += "  outpcurrentRippleLifeSpan_display.innerHTML = currentRippleLifeSpan_var;\n";
+  ptr += "}\n";
+  ptr += "\n";
+  ptr += "var currentRippleSpeed_slider = document.getElementById('currentRippleSpeed'); \n";
+  ptr += "var currentRippleSpeed_var = currentRippleSpeed_slider.value;                     \n";
+  ptr += "var outpcurrentRippleSpeed_display = document.getElementById('currentRippleSpeed_display'); \n";
+  ptr += "outpcurrentRippleSpeed_display.innerHTML = currentRippleSpeed_var/100;\n";
+  ptr += "currentRippleSpeed_slider.oninput = function() {\n";
+  ptr += "  currentRippleSpeed_var = this.value/100; //scale value down by 100\n";
+  ptr += "    outpcurrentRippleSpeed_display.innerHTML = currentRippleSpeed_var;\n";
+  ptr += "}\n";
+  ptr += "\n";
+  ptr += "var currentNumberofColors_slider = document.getElementById('currentNumberofColors'); \n";
+  ptr += "var currentNumberofColors_var = currentNumberofColors_slider.value;             \n";
+  ptr += "var outpcurrentNumberofColors_display = document.getElementById('currentNumberofColors_display'); \n";
+  ptr += "outpcurrentNumberofColors_display.innerHTML = currentNumberofColors_var;\n";
+  ptr += "currentNumberofColors_slider.oninput = function() {\n";
+  ptr += "  currentNumberofColors_var = this.value;\n";
+  ptr += "    outpcurrentNumberofColors_display.innerHTML = currentNumberofColors_var;\n";
+  ptr += "}\n";
+  ptr += "\n";
+  ptr += "var currentDecay_slider = document.getElementById('currentDecay'); \n";
+  ptr += "var currentDecay_var = currentDecay_slider.value;                        \n";
+  ptr += "var outpcurrentDecay_display = document.getElementById('currentDecay_display'); \n";
+  ptr += "outpcurrentDecay_display.innerHTML = currentDecay_var/1000;\n";
+  ptr += "currentDecay_slider.oninput = function() {\n";
+  ptr += "  currentDecay_var = this.value/1000; //scale value down by 1000\n";
+  ptr += "    outpcurrentDecay_display.innerHTML = currentDecay_var;\n";
+  ptr += "}\n";
+  ptr += "// END OF SLIDER SCRIPTS\n";
+  ptr += "\n";
+  ptr += "  // used to update internal variables\n";
+  ptr += "  function sendData() {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    // You can access the values with document.getElementById('elementId').value\n";
+  ptr += "    data = {};\n";
+  ptr += "    // Get the value of the sliders\n";
+  ptr += "    data.currentNumberofRipples = parseInt(currentNumberofRipples_slider.value); \n";
+  ptr += "    data.currentDelayBetweenRipples = parseInt(currentDelayBetweenRipples_slider.value); \n";
+  ptr += "    data.currentRainbowDeltaPerTick = parseInt(currentRainbowDeltaPerTick_slider.value); \n";
+  ptr += "    data.currentRippleLifeSpan = parseInt(currentRippleLifeSpan_slider.value); \n";
+  ptr += "    data.currentRippleSpeed = parseFloat(currentRippleSpeed_slider.value); \n";
+  ptr += "    data.currentNumberofColors = parseInt(currentNumberofColors_slider.value); \n";
+  ptr += "    data.currentDecay = parseFloat(currentDecay_slider.value); \n";
+  ptr += "    data.currentBehavior = parseInt(document.getElementById('currentBehavior').value); \n";
+  ptr += "    data.currentDirection = parseInt(document.getElementById('currentDirection').value); \n";
+  ptr += "    \n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/updateInternalVariables', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  ptr += "  }\n";
+  ptr += "\n";
+  ptr += "  function selectProfile(profile) {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    data = {};\n";
+  ptr += "    if (profile >= 0) { data.selectProfile = profile; }\n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/profileManagement', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  ptr += "    setTimeout(()=> {window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);} ,250);\n";
+  ptr += "  }\n";
+  ptr += "\n";
+    ptr += "  function deleteCurrentSelectedProfile() {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    data = {};\n";
+  ptr += "    data.deleteProfile = 1;\n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/profileManagement', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  ptr += "    setTimeout(()=> {window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);} ,250);\n";
+  ptr += "  }\n";
+  ptr += "\n";
+    ptr += "\n";
+    ptr += "  function saveCurrentSelectedProfile() {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    data = {};\n";
+  ptr += "    data.saveProfile = 1;\n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/profileManagement', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  ptr += "    setTimeout(()=> {window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);} ,250);\n";
+  ptr += "  }\n";
+  ptr += "\n";
+    ptr += "\n";
+    ptr += "  function loadCurrentSelectedProfile() {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    data = {};\n";
+  ptr += "    data.loadProfile = 1;\n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/profileManagement', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  ptr += "    setTimeout(()=> {window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);} ,250);\n";
+  ptr += "  }\n";
+  ptr += "\n";
+    ptr += "  function selectPreset(preset) {\n";
+  ptr += "    // Include the logic to send the data to the server\n";
+  ptr += "    data = {};\n";
+  ptr += "    if (preset >= 0) { data.selectPreset = preset; }\n";
+  ptr += "\n";
+  ptr += "    var xhr = new XMLHttpRequest();\n";
+  ptr += "    xhr.open('POST', '/profileManagement', true);\n";
+  ptr += "    xhr.setRequestHeader('Content-Type', 'application/json');\n";
+  ptr += "    xhr.send(JSON.stringify(data));\n";
+  // ptr += "    window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);\n";
+  ptr += "    setTimeout(()=> {window.location.href='http://192.168.1.241/dashboard';window.location.reload(true);} ,250);\n";
+  ptr += "  }\n";
+  ptr += "\n";
+  ptr += "    function toggleMasterAutoRipple(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/MasterFireRippleEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/MasterFireRippleEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "    function toggleCenterAutoRipple(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/CenterFireRippleEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/CenterFireRippleEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "    function toggleCubeAutoRipple(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/CubeFireRippleEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/CubeFireRippleEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "    function toggleQuadAutoRipple(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/QuadFireRippleEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/QuadFireRippleEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "    function toggleBorderAutoRipple(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/BorderFireRippleEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/BorderFireRippleEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "    function toggleRandomEffect(checkbox) {\n";
+  ptr += "      if (checkbox.checked) {\n";
+  ptr += "        fetch('/RandomEffectEnabled/on');\n";
+  ptr += "      } else {\n";
+  ptr += "        fetch('/RandomEffectEnabled/off');\n";
+  ptr += "      }\n";
+  ptr += "    }\n";
+  ptr += "  </script>\n";
+  ptr += "</body>\n";
+  ptr += "</html>\n";
+  ptr += "\n";
+  return ptr;
 }
 
 /* HANDLER FUNCTIONS */
@@ -448,10 +591,11 @@ void handle_PostRequest() {
     int Behavior = json.hasPropery("currentBehavior") ? json["currentBehavior"].getInt() : GlobalParameters.currentBehavior;
     int Direction = json.hasPropery("currentDirection") ? json["currentDirection"].getInt() : GlobalParameters.currentDirection;
     float Decay = json.hasPropery("currentDecay") ? (float) json["currentDecay"].getInt() : GlobalParameters.currentDecay;
+    Decay = Decay/1000; //scaling for proper display on HTML webpage
 
     Serial.print("received new NumberofRipples from POST request: ");
     Serial.print(NumberofRipples);
-    if(NumberofRipples > 0 && NumberofRipples <= NUMBER_OF_RIPPLES){ /* new value received */
+    if(NumberofRipples >= HTTP_CURRENTNUMBEROFRIPPLES_MIN && NumberofRipples <= HTTP_CURRENTNUMBEROFRIPPLES_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(GlobalParameters.currentNumberofRipples);
       GlobalParameters.currentNumberofRipples = NumberofRipples;
@@ -461,7 +605,7 @@ void handle_PostRequest() {
 
     Serial.print("received new DelayBetweenRipples from POST request: ");
     Serial.print(DelayBetweenRipples);
-    if(DelayBetweenRipples >= 1 && DelayBetweenRipples <= 20000){ /* new value received */
+    if(DelayBetweenRipples >= HTTP_CURRENTDELAYBETWEENRIPPLES_MIN && DelayBetweenRipples <= HTTP_CURRENTDELAYBETWEENRIPPLES_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(GlobalParameters.currentDelayBetweenRipples);
       GlobalParameters.currentDelayBetweenRipples = DelayBetweenRipples;
@@ -471,7 +615,7 @@ void handle_PostRequest() {
 
     Serial.print("received new RainbowDeltaPerTick from POST request: ");
     Serial.print(RainbowDeltaPerTick);
-    if(RainbowDeltaPerTick >= 1 && RainbowDeltaPerTick <= 20000){ /* new value received */
+    if(RainbowDeltaPerTick >= HTTP_CURRENTRAINBOWDELTAPERTICK_MIN && RainbowDeltaPerTick <= HTTP_CURRENTRAINBOWDELTAPERTICK_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(GlobalParameters.currentRainbowDeltaPerTick);
       GlobalParameters.currentRainbowDeltaPerTick = RainbowDeltaPerTick;
@@ -481,7 +625,7 @@ void handle_PostRequest() {
 
     Serial.print("received new RippleLifeSpan from POST request: ");
     Serial.print(RippleLifeSpan);
-    if(RippleLifeSpan >= 1 && RippleLifeSpan <= 20000){ /* new value received */
+    if(RippleLifeSpan >= HTTP_CURRENTRIPPLELIFESPAN_MIN && RippleLifeSpan <= HTTP_CURRENTRIPPLELIFESPAN_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(GlobalParameters.currentRippleLifeSpan);
       GlobalParameters.currentRippleLifeSpan = RippleLifeSpan;
@@ -489,9 +633,9 @@ void handle_PostRequest() {
       Serial.println(". New RippleLifeSpan not valid; discarded.");
     }
 
-    if(RippleSpeed >= 0.01 && RippleSpeed <= 10){ /* new value received */
-      Serial.print("received new Ripple Speed from POST request: ");
-      Serial.print(String(RippleSpeed, 2));
+    Serial.print("received new Ripple Speed from POST request: ");
+    Serial.print(String(RippleSpeed, 2));
+    if(RippleSpeed >= HTTP_CURRENTRIPPLESPEED_MIN && RippleSpeed <= HTTP_CURRENTRIPPLESPEED_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(String(GlobalParameters.currentRippleSpeed, 2));
       GlobalParameters.currentRippleSpeed = RippleSpeed;
@@ -501,7 +645,7 @@ void handle_PostRequest() {
 
     Serial.print("received new NumberofColors from POST request: ");
     Serial.print(NumberofColors);
-    if(NumberofColors >= 1 && NumberofColors <= 25){ /* new value received */
+    if(NumberofColors >= HTTP_CURRENTNUMBEROFCOLORS_MIN && NumberofColors <= HTTP_CURRENTNUMBEROFCOLORS_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(GlobalParameters.currentNumberofColors);
       GlobalParameters.currentNumberofColors = NumberofColors;
@@ -531,7 +675,7 @@ void handle_PostRequest() {
 
     Serial.print("received new Decay factor from POST request: ");
     Serial.print(String(Decay, 3));
-    if(Decay >= 0.5 && Decay <= 1){ /* new value received */
+    if(Decay >= HTTP_CURRENTDECAY_MIN && Decay <= HTTP_CURRENTDECAY_MAX){ /* new value received */
       Serial.print(". New value accepted. Previous value:");
       Serial.println(String(GlobalParameters.currentDecay, 3));
       GlobalParameters.currentDecay = Decay;
@@ -555,80 +699,108 @@ void handle_ManualRipple() {
   server.send(200, "text/html", SendHTML_Dashboard());
 }
 
-void handle_RestoreProfile_1() {
-  boolean EEP_return = 0U;
-  currentProfile = 0;
-  EEP_return = EEPROM_RestoreProfile(currentProfile);
-  if(EEP_return == 1U){ 
-    /* profile found */
-  } else{
+void handle_profileManagement() {
+  Serial.println("received POST request for profile management");
+  String body = server.arg("plain");
+  DEBUG_MSG_HUE(body.c_str());
 
+  /* local variables*/
+  presetType preset = no_preset;
+  bool deleteProfileRequest = 0U;
+  bool saveProfileRequest = 0U;
+  bool loadProfileRequest = 0U;
+  bool loadProfileRequest_return = 0U;
+
+  if (body.length() == 0){
+      char response[strlen_P(HUE_ERROR_TEMPLATE) + server.uri().length() + 40];
+      snprintf_P(
+          response, sizeof(response),
+          HUE_ERROR_TEMPLATE,
+          5,
+          server.uri().c_str(),
+          "invalid/missing parameters in body");        
+      server.send(400, "application/json", response);
+  }else{
+    SimpleJson json;
+    json.parse(body);
+    /* USER PROFILE MANAGEMENT */
+    if(json.hasPropery("selectProfile")){
+      if( (json["selectProfile"].getInt()) >= 0 && (json["selectProfile"].getInt() < EEPROM_SUPPORTED_PROFILES) ){
+       currentSelectedProfile = json["selectProfile"].getInt();
+        Serial.print("new profile selected: ");
+        Serial.println(currentSelectedProfile);
+      }else{
+        Serial.print("received new INVALID profile: ");
+        Serial.print(json["selectProfile"].getInt());
+        Serial.print(". Discarding - current profile is still ");
+        Serial.println(currentSelectedProfile);
+      }
+    }
+    
+    if(json.hasPropery("deleteProfile")){
+      deleteProfileRequest = (bool) json["deleteProfile"].getInt();
+      if(deleteProfileRequest == 1U){
+        Serial.println("received request to delete current profile");
+        EEPROM_InvalidateProfile(currentSelectedProfile); 
+        if(currentLoadedProfile == currentSelectedProfile) currentLoadedProfile = -1; /*loaded profile was the one we just deleted! */
+      }
+    }
+
+    if(json.hasPropery("loadProfile")){
+      loadProfileRequest = (bool) json["loadProfile"].getInt();
+      if(loadProfileRequest == 1U){
+        Serial.println("received request to load current profile");
+        loadProfileRequest_return = EEPROM_RestoreProfile(currentSelectedProfile);
+        if(loadProfileRequest_return) currentLoadedProfile = currentSelectedProfile;
+      }
+    }
+
+    if(json.hasPropery("saveProfile")){
+      saveProfileRequest = (bool) json["saveProfile"].getInt();
+      if(saveProfileRequest == 1U){
+        Serial.println("received request to save current profile");
+        EEPROM_StoreProfile(currentSelectedProfile);
+        currentLoadedProfile = currentSelectedProfile;
+      }
+    }
+
+    /* PRESET MANAGEMENT */
+    if(json.hasPropery("selectPreset")){
+      preset = (presetType) json["selectPreset"].getInt();
+        Serial.print("new preset selected: ");
+        Serial.println(preset);
+
+      switch(preset){
+      case default_preset:
+        Serial.println("received request for preset Rainbow Trails");
+        GlobalParameters.currentNumberofRipples = HTTP_CURRENTNUMBEROFRIPPLES_DEFAULT;
+        GlobalParameters.currentNumberofColors = HTTP_CURRENTNUMBEROFCOLORS_DEFAULT;
+        GlobalParameters.currentBehavior = HTTP_CURRENTBEHAVIOR_DEFAULT;
+        GlobalParameters.currentDirection = HTTP_CURRENTDIRECTION_DEFAULT;
+        GlobalParameters.currentDelayBetweenRipples = HTTP_CURRENTDELAYBETWEENRIPPLES_DEFAULT; /* in milliseconds */
+        GlobalParameters.currentRainbowDeltaPerTick = HTTP_CURRENTRAINBOWDELTAPERTICK_DEFAULT; /* units: hue */
+        GlobalParameters.currentRippleLifeSpan = HTTP_CURRENTRIPPLELIFESPAN_DEFAULT;           /* in milliseconds */
+        GlobalParameters.currentRippleSpeed = HTTP_CURRENTRIPPLESPEED_DEFAULT;
+        GlobalParameters.currentDecay = HTTP_CURRENTDECAY_DEFAULT;
+        break;
+      case RainbowTrails:
+        Serial.println("received request for preset Rainbow Trails");
+        break;
+      case LongTrails:
+        Serial.println("received request for  preset Long Trails");
+        break;
+      }
+    }
   }
   server.send(200, "text/html", SendHTML_Dashboard());
 }
 
-void handle_RestoreProfile_2() {
-  boolean EEP_return = 0U;
-  currentProfile = 1;
-  EEP_return = EEPROM_RestoreProfile(currentProfile);
-  if(EEP_return == 1U){ 
-    /* profile found */
-  } else{
-
-  }
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
-
-void handle_RestoreProfile_3() {
-  boolean EEP_return = 0U;
-  currentProfile = 2;
-  EEP_return = EEPROM_RestoreProfile(currentProfile);
-  if(EEP_return == 1U){ 
-    /* profile found */
-  } else{
-
-  }
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
-
-void handle_RestoreProfile_4() {
-  boolean EEP_return = 0U;
-  currentProfile = 3;
-  EEP_return = EEPROM_RestoreProfile(currentProfile);
-  if(EEP_return == 1U){ 
-    /* profile found */
-  } else{
-
-  }
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
-
-void handle_RestoreProfile_5() {
-  boolean EEP_return = 0U;
-  currentProfile = 4;
-  EEP_return = EEPROM_RestoreProfile(currentProfile);
-  if(EEP_return == 1U){ 
-    /* profile found */
-  } else{
-
-  }
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
-
-void handle_StoreProfile() {
-  EEPROM_StoreProfile(0U);
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
-
-void handle_DeleteProfile() {
-  //EEPROM_RestoreProfile(0U);
-  server.send(200, "text/html", SendHTML_Dashboard());
-}
 
 void handle_SWreset() {
   ESP.restart();
 }
 
+/* checkbox handling */
 void handle_MasterFireRippleEnabled_On() {
   Serial.println("Master Automatic ripples: ON");
   GlobalParameters.loop_MasterFireRippleEnabled = 1;
@@ -688,6 +860,7 @@ void handle_RandomEffectEnabled_Off() {
   Serial.println("Border Automatic ripples: OFF");
   GlobalParameters.loop_RandomEffectEnabled = 0;
 }
+/* end of checkbox handling*/
 
 /* to be called periodically inside loop() */
 void WiFi_MainFunction(void){
@@ -709,13 +882,7 @@ void WiFi_init(void){
   /* Setup REST API Handlers */
   server.on("/dashboard", handle_OnConnect);
   server.on("/ManualRipple", handle_ManualRipple);
-  server.on("/RestoreProfile_1", handle_RestoreProfile_1);
-  server.on("/RestoreProfile_2", handle_RestoreProfile_2);
-  server.on("/RestoreProfile_3", handle_RestoreProfile_3);
-  server.on("/RestoreProfile_4", handle_RestoreProfile_4);
-  server.on("/RestoreProfile_5", handle_RestoreProfile_5);
-  server.on("/StoreProfile", handle_StoreProfile);
-  server.on("/DeleteProfile", handle_DeleteProfile);
+  server.on("/profileManagement", handle_profileManagement);
   server.on("/SWreset", handle_SWreset);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);

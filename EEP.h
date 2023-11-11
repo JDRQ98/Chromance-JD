@@ -5,8 +5,19 @@
 
 #define EEPROM_SIZE 512
 #define PROFILE_HASH 0xAAAAAAAA
-#define EEPROM_DEBUGGING TRUE
 #define EEPROM_SUPPORTED_PROFILES 5
+
+
+#define DEBUG_EEP                Serial
+#ifdef DEBUG_EEP
+    #if defined(ARDUINO_ARCH_ESP32)
+        #define DEBUG_MSG_EEP(fmt, ...) { DEBUG_EEP.printf_P((PGM_P) PSTR(fmt), ## __VA_ARGS__); }
+    #else
+        #error Platform not supported
+    #endif
+#else
+    #define DEBUG_MSG_EEP(...)
+#endif
 
 /* public variables */
 extern unsigned int Global_NumberOfProfiles_InDFLS;
@@ -28,11 +39,10 @@ typedef struct {
   float currentDecay;
 } ProfileParameters_struct;
 
-extern void EEPROM_Write_GlobalParameters();
-extern void EEPROM_Read_GlobalParameters();
 
 unsigned int EEPROM_ParseProfiles();
 extern boolean EEPROM_RestoreProfile(unsigned int profileNumber); /* returns TRUE if restore successful, FALSE if restore unsuccessful*/
 extern void EEPROM_StoreProfile(unsigned int profileNumber);
+extern void EEPROM_InvalidateProfile(unsigned int profileNumber);
 
 #endif

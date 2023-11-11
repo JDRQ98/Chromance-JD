@@ -14,7 +14,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "mapping.h"
 
-#define NUMBER_OF_RIPPLES 100 /* for memory management: max number of ripples */
+#define MAX_NUMBER_OF_RIPPLES 100 /* for memory management: max number of ripples */
 
 #define ALL_DIRECTIONS -1 /* used as paramater 'dir' for Bulk FireRipple API's */
 #define NO_NODE_LIMIT 0xFFFF /* used as parameter 'nodeLimit' for FireRipple API's*/
@@ -45,11 +45,11 @@ enum directionBias {
 };
 
 
-
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
 void Strips_init();
 void Ripple_MainFunction();
+void Ripple_KillAllRipples();
 
 /* functions used by Application Software */
 extern bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);

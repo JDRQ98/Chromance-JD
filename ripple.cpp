@@ -4,12 +4,12 @@
 int lengths[NUMBER_OF_STRIPS] = {165, 165}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
-Adafruit_NeoPixel strip0(lengths[0], 4,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip1(lengths[1], 2,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip0(lengths[0], 14,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip1(lengths[1], 12,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
 
 // These ripples are endlessly reused so we don't need to do any memory management
-Ripple ripples[NUMBER_OF_RIPPLES] = {
+Ripple ripples[MAX_NUMBER_OF_RIPPLES] = {
   Ripple(0),
   Ripple(1),
   Ripple(2),
@@ -158,6 +158,16 @@ void Ripple_MainFunction(){
   for (int strip = 0; strip < NUMBER_OF_STRIPS ; strip++){
     strips[strip].show();
   }
+}
+
+/* stop all current ripples */
+void Ripple_KillAllRipples(){
+  for (int i = 0; i < GlobalParameters.currentNumberofRipples; i++)
+  {
+    ripples[i].state = dead;
+  }
+  /* allow next burst of ripples */
+  DelayPeriodActive = 0;
 }
 
 
