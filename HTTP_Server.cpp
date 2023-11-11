@@ -900,6 +900,7 @@ void WiFi_init(void){
   
   /* server already begun by hueBrdige */
   //server.begin();
+  //server.enableDelay(false); /* refer to comment from scottchiefbaker in https://github.com/espressif/arduino-esp32/issues/7708*/
   Serial.printf("Wifi connected, SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
   //Serial.println(WiFi.localIP());
 

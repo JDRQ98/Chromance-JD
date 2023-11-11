@@ -45,6 +45,7 @@ void HueBridge::start()
 
     webServer.enableCORS();
     webServer.begin();
+	webServer.enableDelay(false); /* refer to comment from scottchiefbaker in https://github.com/espressif/arduino-esp32/issues/7708*/
     DEBUG_MSG_HUE("HTTP server started");
 
     upnp.init();

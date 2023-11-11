@@ -20,13 +20,13 @@ unsigned int EEPROM_ParseProfiles() {
     if(local_hash == (unsigned int) PROFILE_HASH) { /* is this actually a profile or just junk? */
       ProfilesAvailable[i] = 1U;
       number_of_profiles++;
-      DEBUG_MSG_EEP("Found valid profile &d. Profile Hash check PASSED. \n", i+1);
+      DEBUG_MSG_EEP("Found valid profile %d. Profile Hash check PASSED. \n", i+1);
     }
     else{
-      DEBUG_MSG_EEP("Found no valid profile &d. Profile Hash check FAILED. \n", i+1);      
+      DEBUG_MSG_EEP("Found no valid profile %d. Profile Hash check FAILED. \n", i+1);      
     }
   }
-  DEBUG_MSG_EEP("Current number of profiles in DFLS: &d \n", number_of_profiles);
+  DEBUG_MSG_EEP("Current number of profiles in DFLS: %d \n", number_of_profiles);
   return number_of_profiles;
 }
 
