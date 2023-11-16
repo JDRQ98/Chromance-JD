@@ -127,30 +127,7 @@ void loop(){
   if(!DelayPeriodActive && GlobalParameters.loop_MasterFireRippleEnabled){ /* fire cyclic burst */
     lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
     DelayPeriodActive = 1;
-
-
-    if(GlobalParameters.loop_RandomEffectEnabled){
-      rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, NO_NODE_LIMIT);
-    }
-
-    if(GlobalParameters.loop_CubeFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllCubeNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
-    }
-
-    if(GlobalParameters.loop_CenterFireRippleEnabled){
       rippleFired_return |= FireRipple_CenterNode(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
-    }
-
-    if(GlobalParameters.loop_QuadFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllQuadNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
-    }
-
-    if(GlobalParameters.loop_BorderFireRippleEnabled){
-      rippleFired_return |= FireRipple_AllBorderNodes(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
-    }
-    
-    
-
   }
 
 

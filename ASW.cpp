@@ -46,14 +46,14 @@ bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behav
   for(int i = 0; i < numberOfCubeOddNodes; i++){
     if( dir < 0 ){ /* fire in all directions */
       rippleFired |= FireRipple(&currentRipple, 1, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 3, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 5, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     } else { /* fire only in one direction */
       rippleFired |= FireRipple(&currentRipple, dir, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     }
   }
   *firstRipple = currentRipple;
@@ -67,14 +67,14 @@ bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte beha
   for(int i = 0; i < numberOfCubePairNodes; i++){
     if( dir < 0 ){ /* fire in all directions */
       rippleFired |= FireRipple(&currentRipple, 0, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 2, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 4, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     } else { /* fire only in one direction */
       rippleFired |= FireRipple(&currentRipple, dir, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     }
   }
   *firstRipple = currentRipple;
@@ -103,20 +103,20 @@ bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior
   for(int i = 0; i < numberOfQuadNodes; i++){
     if( dir < 0 ){ /* fire in all directions */
       rippleFired |= FireRipple(&currentRipple, 0, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 1, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 2, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 3, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 4, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 5, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     } else { /* fire only in one direction */
       rippleFired |= FireRipple(&currentRipple, dir, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     }
   }
   *firstRipple = currentRipple;
@@ -130,20 +130,20 @@ bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavi
   for(int i = 0; i < numberOfBorderNodes; i++){
     if( dir < 0 ){ /* fire in all directions */
       rippleFired |= FireRipple(&currentRipple, 0, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 1, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 2, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 3, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 4, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
       rippleFired |= FireRipple(&currentRipple, 5, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     } else { /* fire only in one direction */
       rippleFired |= FireRipple(&currentRipple, dir, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     }
   }
   *firstRipple = currentRipple;
@@ -156,20 +156,20 @@ bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, 
   currentRipple = *firstRipple;
   if( dir < 0 ){ /* fire in all directions */
     rippleFired |= FireRipple(&currentRipple, 0, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     rippleFired |= FireRipple(&currentRipple, 1, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     rippleFired |= FireRipple(&currentRipple, 2, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     rippleFired |= FireRipple(&currentRipple, 3, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     rippleFired |= FireRipple(&currentRipple, 4, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
     rippleFired |= FireRipple(&currentRipple, 5, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
   } else { /* fire only in one direction */
     rippleFired |= FireRipple(&currentRipple, dir, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%GlobalParameters.currentNumberofRipples;
+    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
   }
   *firstRipple = currentRipple;
   return rippleFired;

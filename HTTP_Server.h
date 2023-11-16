@@ -11,13 +11,7 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 "]";
 
 /* DEFINES for variable management */
-#define HTTP_CURRENTNUMBEROFRIPPLES_MIN           1U
-#define HTTP_CURRENTNUMBEROFRIPPLES_DEFAULT       100U
-#define HTTP_CURRENTNUMBEROFRIPPLES_MAX           100U /* this define should match the MAX_NUMBER_OF_RIPPLES definition in ripple .h [backend limitation] */
-
-#define HTTP_CURRENTNUMBEROFCOLORS_MIN            1U
-#define HTTP_CURRENTNUMBEROFCOLORS_DEFAULT        7U
-#define HTTP_CURRENTNUMBEROFCOLORS_MAX            25U
+#define HTTP_CURRENTSTARTINGNODE_DEFAULT          0U
 
 #define HTTP_CURRENTBEHAVIOR_DEFAULT feisty
 
@@ -26,10 +20,6 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 #define HTTP_CURRENTDELAYBETWEENRIPPLES_MIN       1U
 #define HTTP_CURRENTDELAYBETWEENRIPPLES_DEFAULT   3000U
 #define HTTP_CURRENTDELAYBETWEENRIPPLES_MAX       20000U
-
-#define HTTP_CURRENTRAINBOWDELTAPERTICK_MIN       0U
-#define HTTP_CURRENTRAINBOWDELTAPERTICK_DEFAULT   200U
-#define HTTP_CURRENTRAINBOWDELTAPERTICK_MAX       2000U
 
 #define HTTP_CURRENTRIPPLELIFESPAN_MIN       1U
 #define HTTP_CURRENTRIPPLELIFESPAN_DEFAULT   3000U
@@ -43,26 +33,37 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 #define HTTP_CURRENTDECAY_DEFAULT   0.985
 #define HTTP_CURRENTDECAY_MAX       1
 
+#define HTTP_CURRENTCOLOR_DEFAULT           0xFF0000
+
+#define HTTP_CURRENTNUMBEROFCOLORS_MIN            1U
+#define HTTP_CURRENTNUMBEROFCOLORS_DEFAULT        7U
+#define HTTP_CURRENTNUMBEROFCOLORS_MAX            64U
+
+#define HTTP_CURRENTRAINBOWDELTAPERTICK_MIN       0U
+#define HTTP_CURRENTRAINBOWDELTAPERTICK_DEFAULT   200U
+#define HTTP_CURRENTRAINBOWDELTAPERTICK_MAX       2000U
+
+#define HTTP_CURRENTRAINBOWDELTAPERPERIOD_MIN       0U
+#define HTTP_CURRENTRAINBOWDELTAPERPERIOD_DEFAULT   0U
+#define HTTP_CURRENTRAINBOWDELTAPERPERIOD_MAX       60000U
+
 
 
 
 /* Variables used for control over web server */
 typedef struct {
   boolean loop_MasterFireRippleEnabled;
-  boolean loop_CenterFireRippleEnabled;
-  boolean loop_CubeFireRippleEnabled;
-  boolean loop_QuadFireRippleEnabled;
-  boolean loop_BorderFireRippleEnabled;
-  boolean loop_RandomEffectEnabled;
-  unsigned char currentNumberofRipples;
-  unsigned char currentNumberofColors;
+  unsigned char currentStartingNode;
   unsigned char currentBehavior;
   signed char currentDirection;
   short currentDelayBetweenRipples;
-  short currentRainbowDeltaPerTick; /* units: hue */
   unsigned long currentRippleLifeSpan;
   float currentRippleSpeed;
   float currentDecay;
+  unsigned int currentColor;
+  short currentRainbowDeltaPerPeriod; /* units: hue */
+  short currentRainbowDeltaPerTick; /* units: hue */
+  unsigned char currentNumberofColors;
 } GlobalParameters_struct;
 
 typedef enum {

@@ -1,5 +1,6 @@
 #include "EEP.h"
 #include "HTTP_Server.h"
+#include "ripple.h"
 
 static unsigned int EEP_ProfileSize = 0;
 unsigned int Global_NumberOfProfiles_InDFLS = 0;
@@ -35,9 +36,7 @@ void EEPROM_StoreProfile(unsigned int profileNumber) {
     .ProfileHash = (unsigned int) PROFILE_HASH,
     .ProfileID = profileNumber,
     .loop_MasterFireRippleEnabled = GlobalParameters.loop_MasterFireRippleEnabled,
-    .loop_CenterFireRippleEnabled = GlobalParameters.loop_CenterFireRippleEnabled,
-    .loop_RandomEffectEnabled = GlobalParameters.loop_RandomEffectEnabled,
-    .currentNumberofRipples = GlobalParameters.currentNumberofRipples,
+    .currentNumberofRipples = MAX_NUMBER_OF_RIPPLES,
     .currentNumberofColors = GlobalParameters.currentNumberofColors,
     .currentBehavior = GlobalParameters.currentBehavior,
     .currentDelayBetweenRipples = GlobalParameters.currentDelayBetweenRipples, /* in milliseconds */
@@ -81,9 +80,6 @@ DEBUG_MSG_EEP("   currentNumberofRipples: %d. currentNumberofColors: %d, current
   if(local_hash == (unsigned int) PROFILE_HASH){ /* only apply configuration if we restored a valid hash from EEPROM */
     ret_val = 1U; /* valid profile found */
     GlobalParameters.loop_MasterFireRippleEnabled = local_Profile.loop_MasterFireRippleEnabled;
-    GlobalParameters.loop_CenterFireRippleEnabled = local_Profile.loop_CenterFireRippleEnabled;
-    GlobalParameters.loop_RandomEffectEnabled  = local_Profile.loop_RandomEffectEnabled;
-    GlobalParameters.currentNumberofRipples = local_Profile.currentNumberofRipples;
     GlobalParameters.currentNumberofColors = local_Profile.currentNumberofColors;
     GlobalParameters.currentBehavior  = local_Profile.currentBehavior;
     GlobalParameters.currentDelayBetweenRipples = local_Profile.currentDelayBetweenRipples;
