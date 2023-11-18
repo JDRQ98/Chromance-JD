@@ -212,6 +212,8 @@ void handle_PostRequest(AsyncWebServerRequest *request) {
     request->send_P(200, "application/json", "{}");
 }
 
+
+/* deprecated; for reference for profilemanagement*/
 void handle_OnConnect(AsyncWebServerRequest *request) {
   Serial.println("New client connected!");
 
@@ -227,7 +229,6 @@ ptr += "  <meta http-equiv='Expires' content='0'>\n";
 ptr += "  <link rel='icon' href='data:,'>\n";
 
 /****************** BEGINNING OF CSS STYLE ******************/
-ptr += HTTP_SERVER_CSS;
 /****************** END OF CSS STYLE ******************/
 
 ptr += "</head>\n";
@@ -302,26 +303,17 @@ ptr += "  <h1>ESP32 Web Server</h1>\n";
   ptr += "</section\n>";
   /****************** END OF PROFILE MANAGEMENT ******************/
   /****************** BEGINNING USER INPUT ******************/
-ptr += HTTP_SERVER_HTML;
 /****************** END OF USER INPUT ******************/
   ptr += "</body>\n";
   ptr += "</html>\n";
   ptr += "\n";
-    const char* buffer = ptr.c_str();
+  const char* buffer = ptr.c_str();
   request->send_P(200, "text/html", buffer);
 /****************** BEGINNING OF JAVASCRIPT ******************/
-//ptr += HTTP_SERVER_JAVASCRIPT;
-  request->send_P(200, "text/html", HTTP_SERVER_JAVASCRIPT);
-
-
 
 //  ptr += HTTP_SERVER_JAVASCRIPT;
 /****************** END OF JAVASCRIPT ******************/
-//ptr += "test2: after JS";
 
-  //const char* buffer = ptr.c_str();
-  //request->send_P(200, "text/html", buffer);
-}
 
 void handle_ManualRipple(AsyncWebServerRequest *request) {
   Serial.println("Received manual ripple request");
@@ -459,7 +451,11 @@ void WiFi_init(void){
   }
   
   /* Setup REST API Handlers */
-  server.on("/dashboard", handle_OnConnect);
+  //server.on("/dashboard", handle_OnConnect);
+  // Route to set GPIO to HIGH
+  server.on("/dashboard", HTTP_GET, [](AsyncWebServerRequest *request){  
+    request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
+  });
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/profileManagement", handle_profileManagement);
   server.on("/SWreset", handle_SWreset);

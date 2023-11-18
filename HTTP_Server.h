@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "HueBridge.h"
+#include "SPIFFS.h"
 
 PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
     "{\"success\":{\"/lights/%d/state/on\":%s}},"

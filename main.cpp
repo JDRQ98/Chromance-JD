@@ -66,7 +66,11 @@ void setup() {
   Strips_init();
   WiFi_init();
 
- 
+   // Initialize SPIFFS
+  if(!SPIFFS.begin(true)){
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
   // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
   ArduinoOTA
   .onStart([]() {
