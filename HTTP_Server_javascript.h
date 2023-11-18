@@ -2,7 +2,7 @@
 #define HTTP_SERVER_JAVASCRIPT_H
 
 
-PROGMEM const char HTTP_SERVER_JAVASCRIPT_1[] =
+PROGMEM const char HTTP_SERVER_JAVASCRIPT[] =
 "<script>document.addEventListener('DOMContentLoaded', function () {\n"
 "    fetchData();\n"
 "});\n"
@@ -334,8 +334,7 @@ PROGMEM const char HTTP_SERVER_JAVASCRIPT_1[] =
 "\n"
 "}\n"
 "\n"
-"const cp = new ColorPicker(document.querySelector(\".colorPicker_container\"));\n";
-PROGMEM const char HTTP_SERVER_JAVASCRIPT_2[] =
+"const cp = new ColorPicker(document.querySelector(\".colorPicker_container\"));\n"
 "</script><script>const defaultRippleAttributes = {\n"
 "    editablestartingNode: false,\n"
 "    startingNode: 'center',\n"
@@ -486,8 +485,7 @@ PROGMEM const char HTTP_SERVER_JAVASCRIPT_2[] =
 "\n"
 "        this.ripplesList.appendChild(newRipple);\n"
 "    }\n"
-"\n";
-PROGMEM const char HTTP_SERVER_JAVASCRIPT_3[] =
+"\n"
 "    clearAll() {\n"
 "        // Remove all ripples from the list\n"
 "        while (this.ripplesList.firstChild) {\n"

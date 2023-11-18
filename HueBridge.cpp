@@ -1,9 +1,15 @@
 #include "HueBridge.h"
 #include <vector>
 #include <WiFi.h>
-#include <WebServer.h>
 #include "templates.h"
 #include "SimpleJson.h"
+
+/* global variables */
+UPnP upnp; 
+std::vector<device_t> lights;
+String uuid = "";
+extern HueBridge hueBridge; /* used for WebServer - belongs to hueBridge */
+
 
 unsigned char HueBridge::addDevice(const char *device_name)
 {
@@ -33,19 +39,19 @@ unsigned char HueBridge::addDevice(const char *device_name)
 void HueBridge::start()
 {
 
-    webServer.on("/description.xml", HTTP_GET, [this]() { handle_GetDescription(); });
-    webServer.on("/api", HTTP_POST, [this]() { handle_PostDeviceType(); });
-    webServer.on("/api/hex_user/lights", HTTP_GET, [this]() { handle_GetState(); });
-    webServer.on("/api/hex_user/lights/1", HTTP_GET, [this]() { handle_GetState(); });
-    webServer.on("/api/hex_user/lights/1/state", HTTP_PUT, [this]() { handle_PutState(); });
-    webServer.on("/", HTTP_GET, [this]() { handle_root(); });
-    webServer.on("/debug/clip.html", HTTP_GET, [this]() { handle_clip(); });
+    webServer.on("/description.xml", HTTP_GET, handle_GetDescription);
+    webServer.on("/api", HTTP_POST, handle_PostDeviceType);
+    webServer.on("/api/hex_user/lights", HTTP_GET, handle_GetState);
+    webServer.on("/api/hex_user/lights/1", HTTP_GET, handle_GetState);
+    webServer.on("/api/hex_user/lights/1/state", HTTP_PUT, handle_PutState);
+    webServer.on("/", HTTP_GET, handle_root);
+    webServer.on("/debug/clip.html", HTTP_GET, handle_clip);
 
-    webServer.onNotFound( [this]() { handle_CORSPreflight(); });
+    webServer.onNotFound( handle_CORSPreflight);
 
-    webServer.enableCORS();
+    //webServer.enableCORS();
     webServer.begin();
-	webServer.enableDelay(false); /* refer to comment from scottchiefbaker in https://github.com/espressif/arduino-esp32/issues/7708*/
+	//webServer.enableDelay(false); /* refer to comment from scottchiefbaker in https://github.com/espressif/arduino-esp32/issues/7708*/
     DEBUG_MSG_HUE("HTTP server started");
 
     upnp.init();
@@ -53,7 +59,7 @@ void HueBridge::start()
 
 void HueBridge::handle()
 {
-    webServer.handleClient();
+    //webServer.handleClient();
     upnp.handle();
 }
 
@@ -85,9 +91,9 @@ void HueBridge::handle()
 
 
 */
-void HueBridge::handle_GetDescription()
+void handle_GetDescription(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("\nHandling handle_GetDescription (GET %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nHandling handle_GetDescription (GET %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
 
     IPAddress ip = WiFi.localIP();
     String mac = WiFi.macAddress();
@@ -104,7 +110,7 @@ void HueBridge::handle_GetDescription()
         mac.c_str()                          // UDN
     );
 
-    webServer.send(200, "text/xml", response);
+    request->send_P(200, "text/xml", response);
 
     DEBUG_MSG_HUE(response);
 }
@@ -128,11 +134,11 @@ void HueBridge::handle_GetDescription()
     ]
 
 */
-void HueBridge::handle_PostDeviceType()
+void handle_PostDeviceType(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("Handling handle_PostDeviceType (POST %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("Handling handle_PostDeviceType (POST %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
 
-    String body = webServer.arg("plain");
+    String body = request->arg("plain");
     DEBUG_MSG_HUE(body.c_str());
 
     char buffer[strlen_P(HUE_USER_JSON_TEMPLATE) + 10];
@@ -142,7 +148,7 @@ void HueBridge::handle_PostDeviceType()
         "hex_user");
 
     // Handling devicetype request
-    webServer.send(200, "application/json", buffer);
+    request->send_P(200, "application/json", buffer);
     DEBUG_MSG_HUE(buffer);
 }
 
@@ -203,13 +209,13 @@ void HueBridge::handle_PostDeviceType()
         }        
 
 */
-void HueBridge::handle_GetState()
+void handle_GetState(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("\nHandling handle_GetState (GET %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nHandling handle_GetState (GET %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
 
-    int pos = webServer.uri().indexOf("lights");
+    int pos = request->url().indexOf("lights");
 
-    unsigned char id = webServer.uri().substring(pos + 7).toInt();
+    unsigned char id = request->url().substring(pos + 7).toInt();
 
     String response;
      
@@ -231,11 +237,11 @@ void HueBridge::handle_GetState()
         response = deviceJson(id - 1);
     }
 
-    webServer.send(200, "application/json", (char *)response.c_str());
+    request->send_P(200, "application/json", (char *)response.c_str());
     DEBUG_MSG_HUE(response.c_str());
 }
 
-String HueBridge::deviceJson(unsigned char id)
+String deviceJson(unsigned char id)
 {
     if (id >= lights.size())
         return "{}";
@@ -307,39 +313,39 @@ String HueBridge::deviceJson(unsigned char id)
         - Lavender      {"on":true, "hue" : 46421, "sat" : 127 }
    
 */
-void HueBridge::handle_PutState()
+void handle_PutState(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("\nHandling handle_PutState (PUT %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nHandling handle_PutState (PUT %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
 
     unsigned char id = 0;
 
-    int pos = webServer.uri().indexOf("lights");
+    int pos = request->url().indexOf("lights");
     if (pos >= 0){
-        id = webServer.uri().substring(pos + 7).toInt();
+        id = request->url().substring(pos + 7).toInt();
     }
 
-    String body = webServer.arg("plain");
+    String body = request->arg("plain");
     DEBUG_MSG_HUE(body.c_str());
 
     if (body.length() == 0){
-        char response[strlen_P(HUE_ERROR_TEMPLATE) + webServer.uri().length() + 40];
+        char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 40];
         snprintf_P(
             response, sizeof(response),
             HUE_ERROR_TEMPLATE,
             5,
-            webServer.uri().c_str(),
+            request->url().c_str(),
             "invalid/missing parameters in body");        
-        webServer.send(400, "application/json", response);
+        request->send_P(400, "application/json", response);
     }
     else if (id == 0 || id > lights.size()){
-        char response[strlen_P(HUE_ERROR_TEMPLATE) + webServer.uri().length() + 30];
+        char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 30];
         snprintf_P(
             response, sizeof(response),
             HUE_ERROR_TEMPLATE,
             3,
-            webServer.uri().c_str(),
+            request->url().c_str(),
             "resource not available");        
-        webServer.send(400, "application/json", response);
+        request->send_P(400, "application/json", response);
     }
     else{
         --id;
@@ -353,7 +359,7 @@ void HueBridge::handle_PutState()
 
         //xy beats ct beats hue, sat
         char mode = json.hasPropery("xy") ? 'x' : json.hasPropery("ct") ? 'c' : 'h';
-        setState(id, json["on"].getBool(), bri, ct, hue, sat, mode);
+        hueBridge.setState(id, json["on"].getBool(), bri, ct, hue, sat, mode);
 
         char buffer[50];
         String rep = "[";
@@ -380,7 +386,7 @@ void HueBridge::handle_PutState()
             rep += buffer;
         }
         rep += "]";
-        webServer.send(200, "application/json", rep.c_str());
+        request->send_P(200, "application/json", rep.c_str());
         DEBUG_MSG_HUE(rep.c_str());
     }
 }
@@ -402,44 +408,45 @@ void HueBridge::setState(unsigned char id, bool state, unsigned char bri, short 
     }
 }
 
-void HueBridge::handle_root()
+void handle_root(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("\nHandling handle_root (GET %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nHandling handle_root (GET %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
     char response[strlen_P(INDEX_PAGE)];
     snprintf_P(
         response, sizeof(response),
         INDEX_PAGE);
-    webServer.send(200, "text/html", response);
+    request->send_P(200, "text/html", response);
 }
 
-void HueBridge::handle_clip()
+void handle_clip(AsyncWebServerRequest *request)
 {
-    DEBUG_MSG_HUE("\nHandling handle_clip (GET %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nHandling handle_clip (GET %s) request from %s\n", request->url().c_str(), request->client().remoteIP().toString().c_str());
     char response[strlen_P(CLIP_PAGE)];
     snprintf_P(
         response, sizeof(response),
         CLIP_PAGE);
-    webServer.send(200, "text/html", response);
+    request->send_P(200, "text/html", response);
 }
 
-void HueBridge::handle_CORSPreflight(){
+void handle_CORSPreflight(AsyncWebServerRequest *request){
+    char response[0];
+    if (request->method() == HTTP_OPTIONS ){
+        DEBUG_MSG_HUE("\nHandling handle_CORSPreflight (OPTIONS %s) request from %s\n",request->url().c_str(),request->client().remoteIP().toString().c_str());
 
-    if ( webServer.method() == HTTP_OPTIONS ){
-        DEBUG_MSG_HUE("\nHandling handle_CORSPreflight (OPTIONS %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
-
-        webServer.sendHeader("Access-Control-Allow-Methods", "PUT, GET, OPTIONS");
-        webServer.sendHeader("Access-Control-Allow-Headers", "Content-Type");
-        webServer.send(204);
+       //request->send("Access-Control-Allow-Methods", "PUT, GET, OPTIONS");
+       //request->send("Access-Control-Allow-Headers", "Content-Type");
+       
+        request->send_P(204, "text/html", response);
     }
     else{
-        handle_NotFound();
+        handle_NotFound(request);
     }
 }
 
-void HueBridge::handle_NotFound()
+void handle_NotFound(AsyncWebServerRequest *request)
 {
     String method = "";
-    switch (webServer.method())
+    switch (request->method())
     {
     case HTTP_GET:
         method = F("GET");
@@ -464,17 +471,17 @@ void HueBridge::handle_NotFound()
         break;
     }
 
-    DEBUG_MSG_HUE("\nhandle_NotFound (%s %s) request from %s\n", method, webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
+    DEBUG_MSG_HUE("\nhandle_NotFound (%s %s) request from %s\n", method,request->url().c_str(),request->client().remoteIP().toString().c_str());
 
-    char response[strlen_P(HUE_ERROR_TEMPLATE) + webServer.uri().length() + 30];
+    char response[strlen_P(HUE_ERROR_TEMPLATE) +request->url().length() + 30];
     snprintf_P(
         response, sizeof(response),
         HUE_ERROR_TEMPLATE,
         4,
-        webServer.uri().c_str(),
+       request->url().c_str(),
         "method, " + method + ", not available");
 
 
-    webServer.send(404, F("application/json"), response);
+    request->send_P(404, F("application/json"), response);
     DEBUG_MSG_HUE(response);
 }

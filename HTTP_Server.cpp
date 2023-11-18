@@ -46,111 +46,9 @@ boolean manualFireRipple = 0;
 unsigned int currentSelectedProfile = 0;
 unsigned int currentLoadedProfile = -1;
 
-String SendHTML_Dashboard(void) {
-// Display the HTML web page
-String ptr = "<!DOCTYPE html> <html>\n";
-ptr += "<html>\n";
-ptr += "<head>\n";
-ptr += "  <meta http-equiv='content-type' content='text/html; charset=UTF-8'>\n";
-ptr += "  <meta name='viewport' content='width=device-width, initial-scale=1'>\n";
-ptr += "  <meta http-equiv='Cache-Control' content='no-cache, no-store, must-revalidate'>\n";
-ptr += "  <meta http-equiv='Pragma' content='no-cache'>\n";
-ptr += "  <meta http-equiv='Expires' content='0'>\n";
-ptr += "  <link rel='icon' href='data:,'>\n";
-
-/****************** BEGINNING OF CSS STYLE ******************/
-ptr += HTTP_SERVER_CSS;
-/****************** END OF CSS STYLE ******************/
-
-ptr += "</head>\n";
-ptr += "<body>\n";
-ptr += "  <h1>ESP32 Web Server</h1>\n";
-  ptr += "<section id=\"checkboxes\"\n>";
-  /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
-  if (GlobalParameters.loop_MasterFireRippleEnabled) {
-    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\" checked><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
-  } else {
-    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\"><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
-  }
-  ptr += "</section\n>";
-/****************** BEGINNING OF PROFILE MANAGEMENT ******************/
-  ptr += "<section id=\"profileManagement\"\n>";
-  ptr += "    <h1>User Profiles</h1>\n";
-  ptr += "<p> Current profile selected: " + String(currentSelectedProfile + 1) + "</p>\n";
-  if(currentLoadedProfile == -1) ptr += "<p> Last profile loaded: N/A </p\n>";
-  else ptr += "<p> Last profile loaded: " + String(currentLoadedProfile + 1) + "</p>\n";
-  ptr += "<div\n>";
-  ptr += "<div id=\"profiles\"\n>";
-  /* button 1*/
-  ptr += "<button onclick='selectProfile(0)' class='Profile ";
-  if (ProfilesAvailable[0] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 0) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 0) ptr += "SelectedProfile ";
-  ptr += "'>#1</button></a>\n";
-  /* button 2*/
-  ptr += "<button onclick='selectProfile(1)' class='Profile ";
-  if (ProfilesAvailable[1] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 1) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 1) ptr += "SelectedProfile ";
-  ptr += "'>#2</button></a>\n";
-  /* button 3*/
-  ptr += "<button onclick='selectProfile(2)' class='Profile ";
-  if (ProfilesAvailable[2] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 2) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 2) ptr += "SelectedProfile ";
-  ptr += "'>#3</button></a>\n";
-  /* button 4*/
-  ptr += "<button onclick='selectProfile(3)' class='Profile ";
-  if (ProfilesAvailable[3] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 3) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 3) ptr += "SelectedProfile ";
-  ptr += "'>#4</button></a>\n";
-  /* button 5*/
-  ptr += "<button onclick='selectProfile(4)' class='Profile ";
-  if (ProfilesAvailable[4] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 4) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 4) ptr += "SelectedProfile ";
-  ptr += "'>#5</button></a>\n";
-  ptr += "</div\n>";
-  ptr += "      <div>\n";
-  ptr += "          <button class='button' onclick = 'saveCurrentSelectedProfile()'> Save </button>\n";
-  ptr += "          <button class='button' onclick = 'loadCurrentSelectedProfile()'> Load </button>\n";
-  ptr += "          <button class='button' style='background-color: red;' onclick = 'deleteCurrentSelectedProfile()'> Delete </button>\n";
-  ptr += "      </div>\n";
-  ptr += "</div\n>";
-    ptr += "    <h1> Presets</ h1>\n ";
-  ptr += "      <div>\n";
-  ptr += "        <button onclick='selectPreset(1)' class='preset'>Restore default settings</button>\n";
-  ptr += "        <button onclick='selectPreset(2)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(3)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
-  ptr += "      </div>\n";
-  ptr += "</section\n>";
-  /****************** END OF PROFILE MANAGEMENT ******************/
-  /****************** BEGINNING USER INPUT ******************/
-ptr += HTTP_SERVER_HTML;
-/****************** END OF USER INPUT ******************/
-ptr += "test1: between html and JS";
-/****************** BEGINNING OF JAVASCRIPT ******************/
-  ptr += HTTP_SERVER_JAVASCRIPT_1;
-  ptr += HTTP_SERVER_JAVASCRIPT_2;
-  ptr += HTTP_SERVER_JAVASCRIPT_3;
-/****************** END OF JAVASCRIPT ******************/
-ptr += "test2:after JS";
-  ptr += "</body>\n";
-  ptr += "</html>\n";
-  ptr += "\n";
-  return ptr;
-}
 
 /* HANDLER FUNCTIONS */
-void handle_getInternalVariables() {
+void handle_getInternalVariables(AsyncWebServerRequest *request) {
   String response = "{\n";
   response += "  \"currentStartingNode\": " + String(GlobalParameters.currentStartingNode) + " ,\n";
 // Enter the desired behavior:
@@ -189,26 +87,31 @@ void handle_getInternalVariables() {
   response += "  \"currentNumberofColorsMax\": " + String(HTTP_CURRENTNUMBEROFCOLORS_MAX) + " \n";
   response += "}";
   
-  server.send(200, "application/json", response);
+  const int length = response.length(); 
+  // declaring character array (+1 for null terminator) 
+  char* char_array = new char[length + 1]; 
+  strcpy(char_array, response.c_str()); 
+  request->send_P(200, "application/json", char_array);
+  delete[] char_array;
 }
 
 
-void handle_PostRequest() {
+void handle_PostRequest(AsyncWebServerRequest *request) {
     Serial.println("received new POST request!");
 
-    String body = server.arg("plain");
+    String body = request->arg("plain");
     DEBUG_MSG_HUE(body.c_str());
     Serial.println("");
 
     if (body.length() == 0){
-        char response[strlen_P(HUE_ERROR_TEMPLATE) + server.uri().length() + 40];
+        char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 40];
         snprintf_P(
             response, sizeof(response),
             HUE_ERROR_TEMPLATE,
             5,
-            server.uri().c_str(),
+            request->url().c_str(),
             "invalid/missing parameters in body");        
-        server.send(400, "application/json", response);
+        request->send_P(400, "application/json", response);
     }else{
     SimpleJson json;
     json.parse(body);
@@ -306,24 +209,129 @@ void handle_PostRequest() {
     }
     }
 
-    //server.send(200, "text/html", SendHTML_Dashboard());
-    server.send(200, "application/json", "{}");
+    request->send_P(200, "application/json", "{}");
 }
 
-void handle_OnConnect() {
+void handle_OnConnect(AsyncWebServerRequest *request) {
   Serial.println("New client connected!");
-  server.send(200, "text/html", SendHTML_Dashboard());
+
+  // Display the HTML web page
+String ptr = "<!DOCTYPE html> <html>\n";
+ptr += "<html>\n";
+ptr += "<head>\n";
+ptr += "  <meta http-equiv='content-type' content='text/html; charset=UTF-8'>\n";
+ptr += "  <meta name='viewport' content='width=device-width, initial-scale=1'>\n";
+ptr += "  <meta http-equiv='Cache-Control' content='no-cache, no-store, must-revalidate'>\n";
+ptr += "  <meta http-equiv='Pragma' content='no-cache'>\n";
+ptr += "  <meta http-equiv='Expires' content='0'>\n";
+ptr += "  <link rel='icon' href='data:,'>\n";
+
+/****************** BEGINNING OF CSS STYLE ******************/
+ptr += HTTP_SERVER_CSS;
+/****************** END OF CSS STYLE ******************/
+
+ptr += "</head>\n";
+ptr += "<body>\n";
+ptr += "  <h1>ESP32 Web Server</h1>\n";
+  ptr += "<section id=\"checkboxes\"\n>";
+  /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
+  if (GlobalParameters.loop_MasterFireRippleEnabled) {
+    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\" checked><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
+  } else {
+    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\"><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
+  }
+  ptr += "</section\n>";
+/****************** BEGINNING OF PROFILE MANAGEMENT ******************/
+  ptr += "<section id=\"profileManagement\"\n>";
+  ptr += "    <h1>User Profiles</h1>\n";
+  ptr += "<p> Current profile selected: " + String(currentSelectedProfile + 1) + "</p>\n";
+  if(currentLoadedProfile == -1) ptr += "<p> Last profile loaded: N/A </p\n>";
+  else ptr += "<p> Last profile loaded: " + String(currentLoadedProfile + 1) + "</p>\n";
+  ptr += "<div\n>";
+  ptr += "<div id=\"profiles\"\n>";
+  /* button 1*/
+  ptr += "<button onclick='selectProfile(0)' class='Profile ";
+  if (ProfilesAvailable[0] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 0) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 0) ptr += "SelectedProfile ";
+  ptr += "'>#1</button></a>\n";
+  /* button 2*/
+  ptr += "<button onclick='selectProfile(1)' class='Profile ";
+  if (ProfilesAvailable[1] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 1) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 1) ptr += "SelectedProfile ";
+  ptr += "'>#2</button></a>\n";
+  /* button 3*/
+  ptr += "<button onclick='selectProfile(2)' class='Profile ";
+  if (ProfilesAvailable[2] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 2) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 2) ptr += "SelectedProfile ";
+  ptr += "'>#3</button></a>\n";
+  /* button 4*/
+  ptr += "<button onclick='selectProfile(3)' class='Profile ";
+  if (ProfilesAvailable[3] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 3) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 3) ptr += "SelectedProfile ";
+  ptr += "'>#4</button></a>\n";
+  /* button 5*/
+  ptr += "<button onclick='selectProfile(4)' class='Profile ";
+  if (ProfilesAvailable[4] == 1U) ptr += "ActiveProfile ";
+  else ptr += "InactiveProfile ";
+  if (currentLoadedProfile == 4) ptr += "LoadedProfile ";
+  if (currentSelectedProfile == 4) ptr += "SelectedProfile ";
+  ptr += "'>#5</button></a>\n";
+  ptr += "</div\n>";
+  ptr += "      <div>\n";
+  ptr += "          <button class='button' onclick = 'saveCurrentSelectedProfile()'> Save </button>\n";
+  ptr += "          <button class='button' onclick = 'loadCurrentSelectedProfile()'> Load </button>\n";
+  ptr += "          <button class='button' style='background-color: red;' onclick = 'deleteCurrentSelectedProfile()'> Delete </button>\n";
+  ptr += "      </div>\n";
+  ptr += "</div\n>";
+    ptr += "    <h1> Presets</ h1>\n ";
+  ptr += "      <div>\n";
+  ptr += "        <button onclick='selectPreset(1)' class='preset'>Restore default settings</button>\n";
+  ptr += "        <button onclick='selectPreset(2)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(3)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
+  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
+  ptr += "      </div>\n";
+  ptr += "</section\n>";
+  /****************** END OF PROFILE MANAGEMENT ******************/
+  /****************** BEGINNING USER INPUT ******************/
+ptr += HTTP_SERVER_HTML;
+/****************** END OF USER INPUT ******************/
+  ptr += "</body>\n";
+  ptr += "</html>\n";
+  ptr += "\n";
+    const char* buffer = ptr.c_str();
+  request->send_P(200, "text/html", buffer);
+/****************** BEGINNING OF JAVASCRIPT ******************/
+//ptr += HTTP_SERVER_JAVASCRIPT;
+  request->send_P(200, "text/html", HTTP_SERVER_JAVASCRIPT);
+
+
+
+//  ptr += HTTP_SERVER_JAVASCRIPT;
+/****************** END OF JAVASCRIPT ******************/
+//ptr += "test2: after JS";
+
+  //const char* buffer = ptr.c_str();
+  //request->send_P(200, "text/html", buffer);
 }
 
-void handle_ManualRipple() {
+void handle_ManualRipple(AsyncWebServerRequest *request) {
   Serial.println("Received manual ripple request");
   manualFireRipple = 1;
-  server.send(200, "text/html", SendHTML_Dashboard());
+  //request->send_P(200, "text/html", SendHTML_Dashboard());
 }
 
-void handle_profileManagement() {
+void handle_profileManagement(AsyncWebServerRequest *request) {
   Serial.println("received POST request for profile management");
-  String body = server.arg("plain");
+  String body = request->arg("plain");
   DEBUG_MSG_HUE(body.c_str());
 
   /* local variables*/
@@ -334,14 +342,14 @@ void handle_profileManagement() {
   bool loadProfileRequest_return = 0U;
 
   if (body.length() == 0){
-      char response[strlen_P(HUE_ERROR_TEMPLATE) + server.uri().length() + 40];
+      char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 40];
       snprintf_P(
           response, sizeof(response),
           HUE_ERROR_TEMPLATE,
           5,
-          server.uri().c_str(),
+          request->url().c_str(),
           "invalid/missing parameters in body");        
-      server.send(400, "application/json", response);
+      request->send_P(400, "application/json", response);
   }else{
     SimpleJson json;
     json.parse(body);
@@ -413,21 +421,21 @@ void handle_profileManagement() {
       }
     }
   }
-  server.send(200, "text/html", SendHTML_Dashboard());
+  //request->send_P(200, "text/html", SendHTML_Dashboard());
 }
 
 
-void handle_SWreset() {
+void handle_SWreset(AsyncWebServerRequest *request) {
   ESP.restart();
 }
 
 /* checkbox handling */
-void handle_MasterFireRippleEnabled_On() {
+void handle_MasterFireRippleEnabled_On(AsyncWebServerRequest *request) {
   Serial.println("Master Automatic ripples: ON");
   GlobalParameters.loop_MasterFireRippleEnabled = 1;
 }
 
-void handle_MasterFireRippleEnabled_Off() {
+void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
   Serial.println("Master Automatic ripples: OFF");
   GlobalParameters.loop_MasterFireRippleEnabled = 0;
 }
@@ -435,7 +443,7 @@ void handle_MasterFireRippleEnabled_Off() {
 
 /* to be called periodically inside loop() */
 void WiFi_MainFunction(void){
-  server.handleClient();
+  //server.handleClient();
 }
 
 /* to be called once at startup */

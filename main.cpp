@@ -29,7 +29,7 @@ bool DelayPeriodActive = 0;
 int nextNode = 0;
 unsigned long lastRippleTime = 0;
 
-HueBridge hueBridge;
+HueBridge hueBridge(80);
 
 void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
 {
@@ -103,8 +103,6 @@ void setup() {
   hueBridge.addDevice("hexagono");
   hueBridge.onSetState(handle_SetState);
   hueBridge.start();
-
-
   //EEPROM_Read_GlobalParameters();
 }
 

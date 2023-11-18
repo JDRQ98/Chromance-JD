@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <WebServer.h>
+#include "ESPAsyncWebServer.h"
 #include "UPnP.h"
 
 //#define DEBUG_HUE                Serial
@@ -39,23 +39,20 @@ class HueBridge
 
         void onSetState(TSetStateCallback fn) { _setCallback = fn; }
         void setState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode);
-
-        WebServer webServer; 
-
+        HueBridge(uint16_t port) : webServer(port) {}
+        AsyncWebServer webServer; 
+    
     private:
-        void handle_GetDescription();
-        void handle_PostDeviceType();
-        void handle_GetState(); 
-        String deviceJson(unsigned char id);
-        void handle_PutState();
-        void handle_root();
-        void handle_clip();
-        void handle_CORSPreflight();
-        void handle_NotFound();
-        
-
-        std::vector<device_t> lights;
-        UPnP upnp; 
         TSetStateCallback _setCallback = NULL;
-        String uuid = "";
+
 };
+
+String deviceJson(unsigned char id);
+void handle_GetDescription(AsyncWebServerRequest *request);
+void handle_PostDeviceType(AsyncWebServerRequest *request);
+void handle_GetState(AsyncWebServerRequest *request); 
+void handle_PutState(AsyncWebServerRequest *request);
+void handle_root(AsyncWebServerRequest *request);
+void handle_clip(AsyncWebServerRequest *request);
+void handle_CORSPreflight(AsyncWebServerRequest *request);
+void handle_NotFound(AsyncWebServerRequest *request);
