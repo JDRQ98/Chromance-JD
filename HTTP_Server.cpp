@@ -1,13 +1,9 @@
 #include <WiFi.h>
-#include <ArduinoJson.h>
 #include <WebServer.h>
 #include <string>  
 using namespace std;
 
 #include "HTTP_Server.h" 
-#include "HTTP_Server_css.h" 
-#include "HTTP_Server_javascript.h" 
-#include "HTTP_Server_html.h" 
 #include "ripple.h"
 #include "EEP.h"
 #include "SimpleJson.h"
@@ -96,117 +92,108 @@ void handle_getInternalVariables(AsyncWebServerRequest *request) {
 }
 
 
-void handle_PostRequest(AsyncWebServerRequest *request) {
-    Serial.println("received new POST request!");
+void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+    //String body = request->arg("plain");
+    DEBUG_MSG_HUE("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
+    DEBUG_MSG_HUE((const char*) data);
 
-    String body = request->arg("plain");
-    DEBUG_MSG_HUE(body.c_str());
-    Serial.println("");
+    DynamicJsonDocument bodyJSON(1024);
+    DeserializationError error = deserializeJson(bodyJSON, data, len);
 
-    if (body.length() == 0){
-        char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 40];
-        snprintf_P(
-            response, sizeof(response),
-            HUE_ERROR_TEMPLATE,
-            5,
-            request->url().c_str(),
-            "invalid/missing parameters in body");        
-        request->send_P(400, "application/json", response);
-    }else{
-    SimpleJson json;
-    json.parse(body);
+    if (error) {
+        DEBUG_MSG_HUE("Failed to parse JSON");
+        return;
+    }
 
-    int NumberofRipples = json.hasPropery("currentNumberofRipples") ? json["currentNumberofRipples"].getInt() : MAX_NUMBER_OF_RIPPLES;
-    short DelayBetweenRipples = json.hasPropery("currentDelayBetweenRipples") ? json["currentDelayBetweenRipples"].getInt() : GlobalParameters.currentDelayBetweenRipples;
-    short RainbowDeltaPerTick = json.hasPropery("currentRainbowDeltaPerTick") ? json["currentRainbowDeltaPerTick"].getInt() : GlobalParameters.currentRainbowDeltaPerTick;
-    unsigned long RippleLifeSpan = json.hasPropery("currentRippleLifeSpan") ? json["currentRippleLifeSpan"].getInt() : GlobalParameters.currentRippleLifeSpan;
-    float RippleSpeed = json.hasPropery("currentRippleSpeed") ? (float) json["currentRippleSpeed"].getInt() : GlobalParameters.currentRippleSpeed;
+    short DelayBetweenRipples = bodyJSON.containsKey("currentDelayBetweenRipples") ? bodyJSON["currentDelayBetweenRipples"] : GlobalParameters.currentDelayBetweenRipples;
+    short RainbowDeltaPerTick = bodyJSON.containsKey("currentRainbowDeltaPerTick") ? bodyJSON["currentRainbowDeltaPerTick"] : GlobalParameters.currentRainbowDeltaPerTick;
+    unsigned long RippleLifeSpan = bodyJSON.containsKey("currentRippleLifeSpan") ? bodyJSON["currentRippleLifeSpan"] : GlobalParameters.currentRippleLifeSpan;
+    float RippleSpeed = bodyJSON.containsKey("currentRippleSpeed") ? (float) bodyJSON["currentRippleSpeed"] : GlobalParameters.currentRippleSpeed;
     RippleSpeed = RippleSpeed/100; //scaling for proper display on HTML webpage
-    int NumberofColors = json.hasPropery("currentNumberofColors") ? json["currentNumberofColors"].getInt() : GlobalParameters.currentNumberofColors;
-    int Behavior = json.hasPropery("currentBehavior") ? json["currentBehavior"].getInt() : GlobalParameters.currentBehavior;
-    int Direction = json.hasPropery("currentDirection") ? json["currentDirection"].getInt() : GlobalParameters.currentDirection;
-    float Decay = json.hasPropery("currentDecay") ? (float) json["currentDecay"].getInt() : GlobalParameters.currentDecay;
+    int NumberofColors = bodyJSON.containsKey("currentNumberofColors") ? bodyJSON["currentNumberofColors"] : GlobalParameters.currentNumberofColors;
+    int Behavior = bodyJSON.containsKey("currentBehavior") ? bodyJSON["currentBehavior"] : GlobalParameters.currentBehavior;
+    int Direction = bodyJSON.containsKey("currentDirection") ? bodyJSON["currentDirection"] : GlobalParameters.currentDirection;
+    float Decay = bodyJSON.containsKey("currentDecay") ? (float) bodyJSON["currentDecay"] : GlobalParameters.currentDecay;
     Decay = Decay/1000; //scaling for proper display on HTML webpage
 
-    Serial.print("received new DelayBetweenRipples from POST request: ");
-    Serial.print(DelayBetweenRipples);
-    if(DelayBetweenRipples >= HTTP_CURRENTDELAYBETWEENRIPPLES_MIN && DelayBetweenRipples <= HTTP_CURRENTDELAYBETWEENRIPPLES_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentDelayBetweenRipples);
-      GlobalParameters.currentDelayBetweenRipples = DelayBetweenRipples;
-    } else {
-      Serial.println(". New DelayBetweenRipples not valid; discarded.");
+    if(DelayBetweenRipples != GlobalParameters.currentDelayBetweenRipples){
+      DEBUG_MSG_HUE("received new DelayBetweenRipples from POST request: %d", DelayBetweenRipples);
+      if(DelayBetweenRipples >= HTTP_CURRENTDELAYBETWEENRIPPLES_MIN && DelayBetweenRipples <= HTTP_CURRENTDELAYBETWEENRIPPLES_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentDelayBetweenRipples);
+        GlobalParameters.currentDelayBetweenRipples = DelayBetweenRipples;
+      } else {
+        DEBUG_MSG_HUE(". New DelayBetweenRipples not valid; discarded.");
+      }
     }
 
-    Serial.print("received new RainbowDeltaPerTick from POST request: ");
-    Serial.print(RainbowDeltaPerTick);
-    if(RainbowDeltaPerTick >= HTTP_CURRENTRAINBOWDELTAPERTICK_MIN && RainbowDeltaPerTick <= HTTP_CURRENTRAINBOWDELTAPERTICK_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentRainbowDeltaPerTick);
-      GlobalParameters.currentRainbowDeltaPerTick = RainbowDeltaPerTick;
-    } else {
-      Serial.println(". New RainbowDeltaPerTick not valid; discarded.");
+    if(RainbowDeltaPerTick != GlobalParameters.currentRainbowDeltaPerTick){
+      DEBUG_MSG_HUE("received new RainbowDeltaPerTick from POST request: %d", RainbowDeltaPerTick);
+      if(RainbowDeltaPerTick >= HTTP_CURRENTRAINBOWDELTAPERTICK_MIN && RainbowDeltaPerTick <= HTTP_CURRENTRAINBOWDELTAPERTICK_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentRainbowDeltaPerTick);
+        GlobalParameters.currentRainbowDeltaPerTick = RainbowDeltaPerTick;
+      } else {
+        DEBUG_MSG_HUE(". New RainbowDeltaPerTick not valid; discarded.");
+      }
     }
 
-    Serial.print("received new RippleLifeSpan from POST request: ");
-    Serial.print(RippleLifeSpan);
-    if(RippleLifeSpan >= HTTP_CURRENTRIPPLELIFESPAN_MIN && RippleLifeSpan <= HTTP_CURRENTRIPPLELIFESPAN_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentRippleLifeSpan);
-      GlobalParameters.currentRippleLifeSpan = RippleLifeSpan;
-    } else {
-      Serial.println(". New RippleLifeSpan not valid; discarded.");
+    if(RippleLifeSpan != GlobalParameters.currentRippleLifeSpan){
+      DEBUG_MSG_HUE("received new RippleLifeSpan from POST request: %d", RippleLifeSpan);
+      if(RippleLifeSpan >= HTTP_CURRENTRIPPLELIFESPAN_MIN && RippleLifeSpan <= HTTP_CURRENTRIPPLELIFESPAN_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentRippleLifeSpan);
+        GlobalParameters.currentRippleLifeSpan = RippleLifeSpan;
+      } else {
+        DEBUG_MSG_HUE(". New RippleLifeSpan not valid; discarded.");
+      }
     }
 
-    Serial.print("received new Ripple Speed from POST request: ");
-    Serial.print(String(RippleSpeed, 2));
-    if(RippleSpeed >= HTTP_CURRENTRIPPLESPEED_MIN && RippleSpeed <= HTTP_CURRENTRIPPLESPEED_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(String(GlobalParameters.currentRippleSpeed, 2));
-      GlobalParameters.currentRippleSpeed = RippleSpeed;
-    } else {
-      Serial.println(". New Ripple Speed not valid; discarded.");
+    if(RippleSpeed != GlobalParameters.currentRippleSpeed){
+      DEBUG_MSG_HUE("received new Ripple Speed from POST request: %.2f", RippleSpeed);
+      if(RippleSpeed >= HTTP_CURRENTRIPPLESPEED_MIN && RippleSpeed <= HTTP_CURRENTRIPPLESPEED_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %.2f", GlobalParameters.currentRippleSpeed);
+        GlobalParameters.currentRippleSpeed = RippleSpeed;
+      } else {
+        DEBUG_MSG_HUE(". New Ripple Speed not valid; discarded.");
+      }
     }
 
-    Serial.print("received new NumberofColors from POST request: ");
-    Serial.print(NumberofColors);
-    if(NumberofColors >= HTTP_CURRENTNUMBEROFCOLORS_MIN && NumberofColors <= HTTP_CURRENTNUMBEROFCOLORS_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentNumberofColors);
-      GlobalParameters.currentNumberofColors = NumberofColors;
-    } else {
-      Serial.println(". New NumberofColors not valid; discarded.");
+    if(NumberofColors != GlobalParameters.currentNumberofColors){
+      DEBUG_MSG_HUE("received new NumberofColors from POST request: %d", NumberofColors);
+      if(NumberofColors >= HTTP_CURRENTNUMBEROFCOLORS_MIN && NumberofColors <= HTTP_CURRENTNUMBEROFCOLORS_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentNumberofColors);
+        GlobalParameters.currentNumberofColors = NumberofColors;
+      } else {
+        DEBUG_MSG_HUE(". New NumberofColors not valid; discarded.");
+      }
     }
 
-    Serial.print("received new Behavior from POST request: ");
-    Serial.print(Behavior);
-    if(Behavior >= 0 && Behavior <= 4){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentBehavior);
-      GlobalParameters.currentBehavior = Behavior;
-    } else {
-      Serial.println(". New Behavior not valid; discarded.");
+    if(Behavior != GlobalParameters.currentBehavior){
+      DEBUG_MSG_HUE("received new Behavior from POST request: %d", Behavior);
+      if(Behavior >= 0 && Behavior <= 4){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentBehavior);
+        GlobalParameters.currentBehavior = Behavior;
+      } else {
+        DEBUG_MSG_HUE(". New Behavior not valid; discarded.");
+      }
     }
 
-    Serial.print("received new Direction from POST request: ");
-    Serial.print(Direction);
-    if(Direction >= -1 && Direction <= 6){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(GlobalParameters.currentDirection);
-      GlobalParameters.currentDirection = Direction;
-    } else {
-      Serial.println(". New Direction not valid; discarded.");
+    if(Direction != GlobalParameters.currentDirection){
+      DEBUG_MSG_HUE("received new Direction from POST request: %d", Direction);
+      if(Direction >= -1 && Direction <= 6){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentDirection);
+        GlobalParameters.currentDirection = Direction;
+      } else {
+        DEBUG_MSG_HUE(". New Direction not valid; discarded.");
+      }
     }
 
-    Serial.print("received new Decay factor from POST request: ");
-    Serial.print(String(Decay, 3));
-    if(Decay >= HTTP_CURRENTDECAY_MIN && Decay <= HTTP_CURRENTDECAY_MAX){ /* new value received */
-      Serial.print(". New value accepted. Previous value:");
-      Serial.println(String(GlobalParameters.currentDecay, 3));
-      GlobalParameters.currentDecay = Decay;
-    } else {
-      Serial.println(". New Decay not valid; discarded.");
-    }
+    if(Decay != GlobalParameters.currentDecay){
+      DEBUG_MSG_HUE("received new Decay factor from POST request: %.3f", Decay);
+      if(Decay >= HTTP_CURRENTDECAY_MIN && Decay <= HTTP_CURRENTDECAY_MAX){ /* new value received */
+        DEBUG_MSG_HUE("New value accepted. Previous value: %.3f", GlobalParameters.currentDecay);
+        GlobalParameters.currentDecay = Decay;
+      } else {
+        DEBUG_MSG_HUE(". New Decay not valid; discarded.");
+      }
     }
 
     request->send_P(200, "application/json", "{}");
@@ -215,7 +202,7 @@ void handle_PostRequest(AsyncWebServerRequest *request) {
 
 /* deprecated; for reference for profilemanagement*/
 void handle_OnConnect(AsyncWebServerRequest *request) {
-  Serial.println("New client connected!");
+  DEBUG_MSG_HUE("New client connected!");
 
   // Display the HTML web page
 String ptr = "<!DOCTYPE html> <html>\n";
@@ -313,16 +300,17 @@ ptr += "  <h1>ESP32 Web Server</h1>\n";
 
 //  ptr += HTTP_SERVER_JAVASCRIPT;
 /****************** END OF JAVASCRIPT ******************/
+}
 
 
 void handle_ManualRipple(AsyncWebServerRequest *request) {
-  Serial.println("Received manual ripple request");
+  DEBUG_MSG_HUE("Received manual ripple request");
   manualFireRipple = 1;
   //request->send_P(200, "text/html", SendHTML_Dashboard());
 }
 
 void handle_profileManagement(AsyncWebServerRequest *request) {
-  Serial.println("received POST request for profile management");
+  DEBUG_MSG_HUE("received POST request for profile management");
   String body = request->arg("plain");
   DEBUG_MSG_HUE(body.c_str());
 
@@ -349,12 +337,12 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
     if(json.hasPropery("selectProfile")){
       if( (json["selectProfile"].getInt()) >= 0 && (json["selectProfile"].getInt() < EEPROM_SUPPORTED_PROFILES) ){
        currentSelectedProfile = json["selectProfile"].getInt();
-        Serial.print("new profile selected: ");
+        DEBUG_MSG_HUE("new profile selected: ");
         Serial.println(currentSelectedProfile);
       }else{
-        Serial.print("received new INVALID profile: ");
+        DEBUG_MSG_HUE("received new INVALID profile: ");
         Serial.print(json["selectProfile"].getInt());
-        Serial.print(". Discarding - current profile is still ");
+        DEBUG_MSG_HUE(". Discarding - current profile is still ");
         Serial.println(currentSelectedProfile);
       }
     }
@@ -362,7 +350,7 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
     if(json.hasPropery("deleteProfile")){
       deleteProfileRequest = (bool) json["deleteProfile"].getInt();
       if(deleteProfileRequest == 1U){
-        Serial.println("received request to delete current profile");
+        DEBUG_MSG_HUE("received request to delete current profile");
         EEPROM_InvalidateProfile(currentSelectedProfile); 
         if(currentLoadedProfile == currentSelectedProfile) currentLoadedProfile = -1; /*loaded profile was the one we just deleted! */
       }
@@ -371,7 +359,7 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
     if(json.hasPropery("loadProfile")){
       loadProfileRequest = (bool) json["loadProfile"].getInt();
       if(loadProfileRequest == 1U){
-        Serial.println("received request to load current profile");
+        DEBUG_MSG_HUE("received request to load current profile");
         loadProfileRequest_return = EEPROM_RestoreProfile(currentSelectedProfile);
         if(loadProfileRequest_return) currentLoadedProfile = currentSelectedProfile;
       }
@@ -380,7 +368,7 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
     if(json.hasPropery("saveProfile")){
       saveProfileRequest = (bool) json["saveProfile"].getInt();
       if(saveProfileRequest == 1U){
-        Serial.println("received request to save current profile");
+        DEBUG_MSG_HUE("received request to save current profile");
         EEPROM_StoreProfile(currentSelectedProfile);
         currentLoadedProfile = currentSelectedProfile;
       }
@@ -389,12 +377,12 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
     /* PRESET MANAGEMENT */
     if(json.hasPropery("selectPreset")){
       preset = (presetType) json["selectPreset"].getInt();
-        Serial.print("new preset selected: ");
+        DEBUG_MSG_HUE("new preset selected: ");
         Serial.println(preset);
 
       switch(preset){
       case default_preset:
-        Serial.println("received request for preset Rainbow Trails");
+        DEBUG_MSG_HUE("received request for preset Rainbow Trails");
         GlobalParameters.currentNumberofColors = HTTP_CURRENTNUMBEROFCOLORS_DEFAULT;
         GlobalParameters.currentBehavior = HTTP_CURRENTBEHAVIOR_DEFAULT;
         GlobalParameters.currentDirection = HTTP_CURRENTDIRECTION_DEFAULT;
@@ -405,10 +393,10 @@ void handle_profileManagement(AsyncWebServerRequest *request) {
         GlobalParameters.currentDecay = HTTP_CURRENTDECAY_DEFAULT;
         break;
       case RainbowTrails:
-        Serial.println("received request for preset Rainbow Trails");
+        DEBUG_MSG_HUE("received request for preset Rainbow Trails");
         break;
       case LongTrails:
-        Serial.println("received request for  preset Long Trails");
+        DEBUG_MSG_HUE("received request for  preset Long Trails");
         break;
       }
     }
@@ -423,12 +411,12 @@ void handle_SWreset(AsyncWebServerRequest *request) {
 
 /* checkbox handling */
 void handle_MasterFireRippleEnabled_On(AsyncWebServerRequest *request) {
-  Serial.println("Master Automatic ripples: ON");
+  DEBUG_MSG_HUE("Master Automatic ripples: ON");
   GlobalParameters.loop_MasterFireRippleEnabled = 1;
 }
 
 void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
-  Serial.println("Master Automatic ripples: OFF");
+  DEBUG_MSG_HUE("Master Automatic ripples: OFF");
   GlobalParameters.loop_MasterFireRippleEnabled = 0;
 }
 /* end of checkbox handling*/
@@ -438,6 +426,10 @@ void WiFi_MainFunction(void){
   //server.handleClient();
 }
 
+void handle_SendDashboard(AsyncWebServerRequest *request){
+  request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
+}
+
 /* to be called once at startup */
 void WiFi_init(void){
   /* Setup WiFi network */
@@ -445,24 +437,22 @@ void WiFi_init(void){
   WiFi.begin(ssid, password);
   WiFi.config(ip, gateway, subnet);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
+    DEBUG_MSG_HUE("Connection Failed! Rebooting...");
     delay(1000);
     ESP.restart();
   }
-  
+
   /* Setup REST API Handlers */
   //server.on("/dashboard", handle_OnConnect);
   // Route to set GPIO to HIGH
-  server.on("/dashboard", HTTP_GET, [](AsyncWebServerRequest *request){  
-    request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
-  });
+  server.on("/dashboard", HTTP_GET, handle_SendDashboard);
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/profileManagement", handle_profileManagement);
   server.on("/SWreset", handle_SWreset);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/getInternalVariables", handle_getInternalVariables); 
-  server.on("/updateInternalVariables", HTTP_POST, handle_PostRequest); 
+  server.on("/updateInternalVariables", HTTP_POST, handle_SendDashboard, nullptr, handle_UpdateInternalVariables); 
   
   /* server already begun by hueBrdige */
   //server.begin();
@@ -472,9 +462,9 @@ void WiFi_init(void){
 
   // Setup Multicast DNS https://en.wikipedia.org/wiki/Multicast_DNS 
   // You can open http://hexagono.local in Chrome on a desktop
-  Serial.println("Setup MDNS for http://hexagono.local");
+  DEBUG_MSG_HUE("Setup MDNS for http://hexagono.local");
   if (!MDNS.begin("hexagono"))
   {
-    Serial.println("Error setting up MDNS responder!");
+    DEBUG_MSG_HUE("Error setting up MDNS responder!");
   }
 }

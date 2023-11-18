@@ -39,13 +39,15 @@ PROGMEM const char UPnP_UDP_RESPONSE_TEMPLATE[] =
     "\r\n";
 
 
+extern void UDP_SendPacket(const char* message);
+
 class UPnP {
     public:
         void init();
         void handle();
+        WiFiUDP _udp;
 
     private:
-        WiFiUDP _udp;
         unsigned int _tcp_port = UPnP_TCP_PORT;
 
         void _handleUDP();

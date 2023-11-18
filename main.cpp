@@ -21,6 +21,7 @@
 #define NUMBER_OF_DIRECTIONS 3
 #define NUMBER_OF_STARTING_NODES 3
 
+
 /* Global Variables used by application */
 int nextRipple = 0;
 int nextDirection = 0;
