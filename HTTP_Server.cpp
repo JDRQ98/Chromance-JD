@@ -306,7 +306,7 @@ ptr += "  <h1>ESP32 Web Server</h1>\n";
 void handle_ManualRipple(AsyncWebServerRequest *request) {
   DEBUG_MSG_HUE("Received manual ripple request");
   manualFireRipple = 1;
-  //request->send_P(200, "text/html", SendHTML_Dashboard());
+  request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
 }
 
 void handle_profileManagement(AsyncWebServerRequest *request) {

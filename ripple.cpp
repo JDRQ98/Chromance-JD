@@ -205,6 +205,16 @@ bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned
   }
 };
 
+bool setSegmentColor(int segment, int col){
+  int hue = fmap(col, 0, GlobalParameters.currentNumberofColors, 0, 0xFFFF);
+
+    for(int i = 0U; i<11U; i++){
+      ledHues[segment][i][0] = short(hue);
+      ledHues[segment][i][1] = 255; //increase brightness
+    }
+
+  return 1;
+};
 
 /* FireDoubleRipple
     Fires two ripples: one biased towards Right and one biased towards left in the same direction

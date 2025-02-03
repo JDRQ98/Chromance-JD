@@ -55,6 +55,7 @@ void Ripple_KillAllRipples();
 extern bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 extern bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+extern bool setSegmentColor(int segment, int col);
 
 class Ripple {
   public:
@@ -472,10 +473,6 @@ class Ripple {
     void renderLed(short ledColors[NUMBER_OF_SEGMENTS][11][2], unsigned long age) {
       int strip = ledAssignments[position[0]][0];
       int led = ledAssignments[position[0]][2] + position[1];
-
-      //int red = ledColors[position[0]][position[1]][0];
-      //int green = ledColors[position[0]][position[1]][1];
-      //int blue = ledColors[position[0]][position[1]][2];
       
 #ifdef DEBUG_RENDERING
       Serial.print("Rendering ripple position (");
@@ -495,32 +492,14 @@ class Ripple {
       */
 #endif
 
-      //ledColors[position[0]][position[1]] = short(min(65535, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0, hue)))));
-      //hue = ledColors[position[0]][position[1]];
       ledColors[position[0]][position[1]][0] = short(hue);
       ledColors[position[0]][position[1]][1] = 255; //increase brightness
       
-      /*
-      ledColors[position[0]][position[1]][0] = byte(min(255, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0.0, (color >> 8) & 0xFF)))));
-      ledColors[position[0]][position[1]][1] = byte(min(255, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0.0, (color >> 16) & 0xFF)))));
-      ledColors[position[0]][position[1]][2] = byte(min(255, max(0, int(fmap(float(age+lifespan), 0.0, float(2*lifespan), 0.0, color & 0xFF)))));
-      */
 
-      //ledColors[position[0]][led][0] = byte(min(255, max(0, int(fmap(float(age), 0.0, float(lifespan), (color >> 8) & 0xFF, 0.0)) + red)));
-      //ledColors[position[0]][led][1] = byte(min(255, max(0, int(fmap(float(age), 0.0, float(lifespan), (color >> 16) & 0xFF, 0.0)) + green)));
-      //ledColors[position[0]][led][2] = byte(min(255, max(0, int(fmap(float(age), 0.0, float(lifespan), color & 0xFF, 0.0)) + blue)));
-      
 #ifdef DEBUG_RENDERING
       Serial.print(", new hue: ");
       Serial.println(hue);
-      /*
-      for (int i = 0; i < 3; i++) {
-        if (ledColors[position[0]][position[1]][i] <= 0x0F)
-          Serial.print('0');
-        Serial.print(ledColors[position[0]][position[1]][i], HEX);
-      }
-      */
-      
+
 #endif
     }
 };
