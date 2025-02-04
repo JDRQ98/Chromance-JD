@@ -1,27 +1,15 @@
 
 #include "UPnP.h"
 
-UPnP upnp; 
-const IPAddress ip_for_debugging(192, 168, 1, 251);  // IP address for sending UDP debugging packets
-unsigned int localPort = 8080; // Local port to send data
-
 void UPnP::handle()
 {
     _handleUDP();
-}
-
-void UDP_SendPacket(const char* message)
-{
-    upnp._udp.beginPacket(ip_for_debugging, 8080); 
-    upnp._udp.printf(message);
-    upnp._udp.endPacket();
 }
 
 void UPnP::init()
 {
     // UDP setup
     #ifdef ESP32
-        upnp._udp.begin(localPort); /* port 8080 */
         _udp.beginMulticast(UPnP_UDP_MULTICAST_IP, UPnP_UDP_MULTICAST_PORT);
     #else
         #error Platform not supported

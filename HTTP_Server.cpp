@@ -4,9 +4,9 @@
 using namespace std;
 
 #include "HTTP_Server.h" 
-#include "ripple.h"
-#include "EEP.h"
-#include "SimpleJson.h"
+#include "MCAL/ripple.h"
+#include "MCAL/EEP.h"
+#include "Alexa/SimpleJson.h"
 
 
 // WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
@@ -16,8 +16,6 @@ const char* password = "Cenote#150";
 const IPAddress ip(192, 168, 1, 241);  // IP address that THIS DEVICE should request
 const IPAddress gateway(192, 168, 1, 250);  // Your router
 const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
-
-#define server hueBridge.webServer //Open port number 80 (HTTP)
 
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
@@ -200,213 +198,10 @@ void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* dat
 }
 
 
-/* deprecated; for reference for profilemanagement*/
-void handle_OnConnect(AsyncWebServerRequest *request) {
-  DEBUG_MSG_HUE("New client connected!");
-
-  // Display the HTML web page
-String ptr = "<!DOCTYPE html> <html>\n";
-ptr += "<html>\n";
-ptr += "<head>\n";
-ptr += "  <meta http-equiv='content-type' content='text/html; charset=UTF-8'>\n";
-ptr += "  <meta name='viewport' content='width=device-width, initial-scale=1'>\n";
-ptr += "  <meta http-equiv='Cache-Control' content='no-cache, no-store, must-revalidate'>\n";
-ptr += "  <meta http-equiv='Pragma' content='no-cache'>\n";
-ptr += "  <meta http-equiv='Expires' content='0'>\n";
-ptr += "  <link rel='icon' href='data:,'>\n";
-
-/****************** BEGINNING OF CSS STYLE ******************/
-/****************** END OF CSS STYLE ******************/
-
-ptr += "</head>\n";
-ptr += "<body>\n";
-ptr += "  <h1>ESP32 Web Server</h1>\n";
-  ptr += "<section id=\"checkboxes\"\n>";
-  /* Display ON/OFF checkbox for loop_MasterFireRippleEnabled */
-  if (GlobalParameters.loop_MasterFireRippleEnabled) {
-    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\" checked><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
-  } else {
-    ptr += "<p><input type=\"checkbox\" id=\"master-auto-ripple-checkbox\" name=\"master-auto-ripple\" value=\"1\" onchange=\"toggleMasterAutoRipple(this)\"><label for=\"master-auto-ripple-checkbox\">Master Enable Automatic Ripples</label></p>\n";
-  }
-  ptr += "</section\n>";
-/****************** BEGINNING OF PROFILE MANAGEMENT ******************/
-  ptr += "<section id=\"profileManagement\"\n>";
-  ptr += "    <h1>User Profiles</h1>\n";
-  ptr += "<p> Current profile selected: " + String(currentSelectedProfile + 1) + "</p>\n";
-  if(currentLoadedProfile == -1) ptr += "<p> Last profile loaded: N/A </p\n>";
-  else ptr += "<p> Last profile loaded: " + String(currentLoadedProfile + 1) + "</p>\n";
-  ptr += "<div\n>";
-  ptr += "<div id=\"profiles\"\n>";
-  /* button 1*/
-  ptr += "<button onclick='selectProfile(0)' class='Profile ";
-  if (ProfilesAvailable[0] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 0) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 0) ptr += "SelectedProfile ";
-  ptr += "'>#1</button></a>\n";
-  /* button 2*/
-  ptr += "<button onclick='selectProfile(1)' class='Profile ";
-  if (ProfilesAvailable[1] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 1) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 1) ptr += "SelectedProfile ";
-  ptr += "'>#2</button></a>\n";
-  /* button 3*/
-  ptr += "<button onclick='selectProfile(2)' class='Profile ";
-  if (ProfilesAvailable[2] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 2) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 2) ptr += "SelectedProfile ";
-  ptr += "'>#3</button></a>\n";
-  /* button 4*/
-  ptr += "<button onclick='selectProfile(3)' class='Profile ";
-  if (ProfilesAvailable[3] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 3) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 3) ptr += "SelectedProfile ";
-  ptr += "'>#4</button></a>\n";
-  /* button 5*/
-  ptr += "<button onclick='selectProfile(4)' class='Profile ";
-  if (ProfilesAvailable[4] == 1U) ptr += "ActiveProfile ";
-  else ptr += "InactiveProfile ";
-  if (currentLoadedProfile == 4) ptr += "LoadedProfile ";
-  if (currentSelectedProfile == 4) ptr += "SelectedProfile ";
-  ptr += "'>#5</button></a>\n";
-  ptr += "</div\n>";
-  ptr += "      <div>\n";
-  ptr += "          <button class='button' onclick = 'saveCurrentSelectedProfile()'> Save </button>\n";
-  ptr += "          <button class='button' onclick = 'loadCurrentSelectedProfile()'> Load </button>\n";
-  ptr += "          <button class='button' style='background-color: red;' onclick = 'deleteCurrentSelectedProfile()'> Delete </button>\n";
-  ptr += "      </div>\n";
-  ptr += "</div\n>";
-    ptr += "    <h1> Presets</ h1>\n ";
-  ptr += "      <div>\n";
-  ptr += "        <button onclick='selectPreset(1)' class='preset'>Restore default settings</button>\n";
-  ptr += "        <button onclick='selectPreset(2)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(3)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
-  ptr += "        <button onclick='selectPreset(0)' class='preset'>TBD</button>\n";
-  ptr += "      </div>\n";
-  ptr += "</section\n>";
-  /****************** END OF PROFILE MANAGEMENT ******************/
-  /****************** BEGINNING USER INPUT ******************/
-/****************** END OF USER INPUT ******************/
-  ptr += "</body>\n";
-  ptr += "</html>\n";
-  ptr += "\n";
-  const char* buffer = ptr.c_str();
-  request->send_P(200, "text/html", buffer);
-/****************** BEGINNING OF JAVASCRIPT ******************/
-
-//  ptr += HTTP_SERVER_JAVASCRIPT;
-/****************** END OF JAVASCRIPT ******************/
-}
-
-
 void handle_ManualRipple(AsyncWebServerRequest *request) {
   DEBUG_MSG_HUE("Received manual ripple request");
   manualFireRipple = 1;
   request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
-}
-
-void handle_profileManagement(AsyncWebServerRequest *request) {
-  DEBUG_MSG_HUE("received POST request for profile management");
-  String body = request->arg("plain");
-  DEBUG_MSG_HUE(body.c_str());
-
-  /* local variables*/
-  presetType preset = no_preset;
-  bool deleteProfileRequest = 0U;
-  bool saveProfileRequest = 0U;
-  bool loadProfileRequest = 0U;
-  bool loadProfileRequest_return = 0U;
-
-  if (body.length() == 0){
-      char response[strlen_P(HUE_ERROR_TEMPLATE) + request->url().length() + 40];
-      snprintf_P(
-          response, sizeof(response),
-          HUE_ERROR_TEMPLATE,
-          5,
-          request->url().c_str(),
-          "invalid/missing parameters in body");        
-      request->send_P(400, "application/json", response);
-  }else{
-    SimpleJson json;
-    json.parse(body);
-    /* USER PROFILE MANAGEMENT */
-    if(json.hasPropery("selectProfile")){
-      if( (json["selectProfile"].getInt()) >= 0 && (json["selectProfile"].getInt() < EEPROM_SUPPORTED_PROFILES) ){
-       currentSelectedProfile = json["selectProfile"].getInt();
-        DEBUG_MSG_HUE("new profile selected: ");
-        Serial.println(currentSelectedProfile);
-      }else{
-        DEBUG_MSG_HUE("received new INVALID profile: ");
-        Serial.print(json["selectProfile"].getInt());
-        DEBUG_MSG_HUE(". Discarding - current profile is still ");
-        Serial.println(currentSelectedProfile);
-      }
-    }
-    
-    if(json.hasPropery("deleteProfile")){
-      deleteProfileRequest = (bool) json["deleteProfile"].getInt();
-      if(deleteProfileRequest == 1U){
-        DEBUG_MSG_HUE("received request to delete current profile");
-        EEPROM_InvalidateProfile(currentSelectedProfile); 
-        if(currentLoadedProfile == currentSelectedProfile) currentLoadedProfile = -1; /*loaded profile was the one we just deleted! */
-      }
-    }
-
-    if(json.hasPropery("loadProfile")){
-      loadProfileRequest = (bool) json["loadProfile"].getInt();
-      if(loadProfileRequest == 1U){
-        DEBUG_MSG_HUE("received request to load current profile");
-        loadProfileRequest_return = EEPROM_RestoreProfile(currentSelectedProfile);
-        if(loadProfileRequest_return) currentLoadedProfile = currentSelectedProfile;
-      }
-    }
-
-    if(json.hasPropery("saveProfile")){
-      saveProfileRequest = (bool) json["saveProfile"].getInt();
-      if(saveProfileRequest == 1U){
-        DEBUG_MSG_HUE("received request to save current profile");
-        EEPROM_StoreProfile(currentSelectedProfile);
-        currentLoadedProfile = currentSelectedProfile;
-      }
-    }
-
-    /* PRESET MANAGEMENT */
-    if(json.hasPropery("selectPreset")){
-      preset = (presetType) json["selectPreset"].getInt();
-        DEBUG_MSG_HUE("new preset selected: ");
-        Serial.println(preset);
-
-      switch(preset){
-      case default_preset:
-        DEBUG_MSG_HUE("received request for preset Rainbow Trails");
-        GlobalParameters.currentNumberofColors = HTTP_CURRENTNUMBEROFCOLORS_DEFAULT;
-        GlobalParameters.currentBehavior = HTTP_CURRENTBEHAVIOR_DEFAULT;
-        GlobalParameters.currentDirection = HTTP_CURRENTDIRECTION_DEFAULT;
-        GlobalParameters.currentDelayBetweenRipples = HTTP_CURRENTDELAYBETWEENRIPPLES_DEFAULT; /* in milliseconds */
-        GlobalParameters.currentRainbowDeltaPerTick = HTTP_CURRENTRAINBOWDELTAPERTICK_DEFAULT; /* units: hue */
-        GlobalParameters.currentRippleLifeSpan = HTTP_CURRENTRIPPLELIFESPAN_DEFAULT;           /* in milliseconds */
-        GlobalParameters.currentRippleSpeed = HTTP_CURRENTRIPPLESPEED_DEFAULT;
-        GlobalParameters.currentDecay = HTTP_CURRENTDECAY_DEFAULT;
-        break;
-      case RainbowTrails:
-        DEBUG_MSG_HUE("received request for preset Rainbow Trails");
-        break;
-      case LongTrails:
-        DEBUG_MSG_HUE("received request for  preset Long Trails");
-        break;
-      }
-    }
-  }
-  //request->send_P(200, "text/html", SendHTML_Dashboard());
-}
-
-
-void handle_SWreset(AsyncWebServerRequest *request) {
-  ESP.restart();
 }
 
 /* checkbox handling */
@@ -420,15 +215,6 @@ void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
   GlobalParameters.loop_MasterFireRippleEnabled = 0;
 }
 /* end of checkbox handling*/
-
-/* to be called periodically inside loop() */
-void WiFi_MainFunction(void){
-  //server.handleClient();
-}
-
-void handle_SendDashboard(AsyncWebServerRequest *request){
-  request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
-}
 
 /* to be called once at startup */
 void WiFi_init(void){
@@ -445,14 +231,11 @@ void WiFi_init(void){
   /* Setup REST API Handlers */
   //server.on("/dashboard", handle_OnConnect);
   // Route to set GPIO to HIGH
-  server.on("/dashboard", HTTP_GET, handle_SendDashboard);
   server.on("/ManualRipple", handle_ManualRipple);
-  server.on("/profileManagement", handle_profileManagement);
-  server.on("/SWreset", handle_SWreset);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/getInternalVariables", handle_getInternalVariables); 
-  server.on("/updateInternalVariables", HTTP_POST, handle_SendDashboard, nullptr, handle_UpdateInternalVariables); 
+  //server.on("/updateInternalVariables", HTTP_POST, handle_SendDashboard, nullptr, handle_UpdateInternalVariables); 
   
   /* server already begun by hueBrdige */
   //server.begin();

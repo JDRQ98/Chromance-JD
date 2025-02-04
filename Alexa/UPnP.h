@@ -1,12 +1,12 @@
 
-
-#pragma once
+#ifndef UPNP_H
+#define UPNP_H
 
 #define UPnP_UDP_MULTICAST_IP     IPAddress(239,255,255,250)
 #define UPnP_UDP_MULTICAST_PORT   1900
 #define UPnP_TCP_PORT             80
 
-//#define DEBUG_UPnP                Serial
+#include "WiFi_utilities.h"
 #ifdef DEBUG_UPnP
     #if defined(ARDUINO_ARCH_ESP32)
         #define DEBUG_MSG_UPnP(fmt, ...) { DEBUG_UPnP.printf_P((PGM_P) PSTR(fmt), ## __VA_ARGS__); }
@@ -39,18 +39,18 @@ PROGMEM const char UPnP_UDP_RESPONSE_TEMPLATE[] =
     "\r\n";
 
 
-extern void UDP_SendPacket(const char* message);
-
 class UPnP {
     public:
         void init();
         void handle();
-        WiFiUDP _udp;
 
     private:
+        WiFiUDP _udp;
         unsigned int _tcp_port = UPnP_TCP_PORT;
 
         void _handleUDP();
         void _onUDPData(const IPAddress remoteIP, unsigned int remotePort, void *data, size_t len);
         void _sendUDPResponse();
 };
+
+#endif /*UPNP_H*/

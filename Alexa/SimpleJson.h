@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SIMPLE_JSON_H
+#define SIMPLE_JSON_H
 
 #include "WString.h"
 #include <map>
@@ -78,3 +79,5 @@ class SimpleJson
         bool isNull( int* index, const char* ptr );
         bool isNumber( int* index, const char* ptr );
 };
+
+#endif /*SIMPLE_JSON_H*/

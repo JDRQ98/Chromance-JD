@@ -1,9 +1,8 @@
 #ifndef ASW_H_
 #define ASW_H_
 
-#include "ripple.h"
+#include "MCAL/ripple.h"
 #include "HTTP_Server.h"
-#include "mapping.h"
 
 #define NUMBER_OF_EFFECTS 4 /* for random effect function*/
 

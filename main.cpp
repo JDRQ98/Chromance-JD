@@ -8,19 +8,17 @@
 
 #include <Adafruit_NeoPixel.h>
 #include <SPI.h>
-#include <ArduinoOTA.h>
-#include <ArduinoOSCWiFi.h>
+#include "Arduino.h"
 
-#include "ripple.h"
+#include "MCAL/ripple.h"
 #include "HTTP_Server.h"
 #include "ASW.h"
-#include "EEP.h"
-#include "SimpleJson.h"
-#include "HueBridge.h"
+#include "MCAL/EEP.h"
+#include "Wifi_utilities.h"
 
 #define NUMBER_OF_DIRECTIONS 3
 #define NUMBER_OF_STARTING_NODES 3
-
+#define LED 2 /*onboard LED*/
 
 /* Global Variables used by application */
 int nextRipple = 0;
@@ -30,85 +28,32 @@ bool DelayPeriodActive = 0;
 int nextNode = 0;
 unsigned long lastRippleTime = 0;
 
-HueBridge hueBridge(80);
-
+/*Alexa callback*/
 void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
 {
   Serial.printf_P("\nhandle_SetState id: %d, state: %s, bri: %d, ct: %d, hue: %d, sat: %d, mode: %s\n", 
     id, state ? "true": "false", bri, ct, hue, sat, mode == 'h' ? "hs" : mode == 'c' ? "ct" : "xy");
 
-  //hueBridge.setState(id, state, bri, ct, hue, sat, mode); // set internal variables of the hueBridge class
-  GlobalParameters.loop_MasterFireRippleEnabled = state;
-
-  if ( ct == 383 ){
-    Serial.println("Warm white");
-  }
-
-  if ( hue == 0 && sat == 254 ){
-    Serial.println("Red");
-  }
-
-  if ( hue == 21845 && sat == 254 ){
-    Serial.println("Green");
-  }
-
-  if ( hue == 43690 && sat == 254 ){
-    Serial.println("Blue");
+  if ( state == 1 ){
+    digitalWrite(LED,HIGH);
+    Serial.println("Alexa set ON");
+  }else{
+    digitalWrite(LED,LOW);
+    Serial.println("Alexa set OFF");
   }
 }
-
-
 
 void setup() {
   Serial.begin(115200);
 
-  EEPROM.begin(EEPROM_SIZE);
-  Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
-  Strips_init();
-  WiFi_init();
-
-   // Initialize SPIFFS
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return;
-  }
-  // Wireless OTA updating? On an ARDUINO?! It's more likely than you think!
-  ArduinoOTA
-  .onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-      type = "sketch";
-    else // U_SPIFFS
-      type = "filesystem";
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
-  })
-  .onEnd([]() {
-    Serial.println("\nEnd");
-  })
-  .onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  })
-  .onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-
-  ArduinoOTA.begin();
-
-  Serial.println("Ready for WiFi OTA updates");
-
-
-  // setup device name for Amazon Echo
-  hueBridge.addDevice("hexagono");
-  hueBridge.onSetState(handle_SetState);
-  hueBridge.start();
+  //EEPROM.begin(EEPROM_SIZE);
+  //Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
   //EEPROM_Read_GlobalParameters();
+
+  pinMode(LED, OUTPUT);
+  Strips_init();
+  WiFi_Utilities_init();
+
 }
 
 
@@ -116,11 +61,7 @@ void loop(){
   unsigned long benchmark = millis();
   int rippleFired_return = 0;
 
-  OscWiFi.parse();
-  ArduinoOTA.handle();            // Handle OTA updates
-  //WiFi_MainFunction();
-  hueBridge.handle();
-
+  WiFi_Utilities_loop();
   Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
 
   if((benchmark-lastRippleTime) > GlobalParameters.currentDelayBetweenRipples){

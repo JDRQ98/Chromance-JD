@@ -3,7 +3,7 @@
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include "HueBridge.h"
+#include "WiFi_utilities.h"
 #include "SPIFFS.h"
 
 PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
@@ -74,8 +74,6 @@ typedef enum {
   LongTrails = 3,
 } presetType;
 
-
-extern HueBridge hueBridge; /* used for WebServer - belongs to hueBridge */
 extern bool DelayPeriodActive; /* variable used for Ripple_KillAllRipples - belongs to ASW*/
 
 extern GlobalParameters_struct GlobalParameters;

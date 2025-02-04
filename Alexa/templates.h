@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEMPLATES_H
+#define TEMPLATES_H
 
 PROGMEM const char HUE_DESCRIPTION_TEMPLATE[] =
 "<?xml version=\"1.0\" ?>"
@@ -226,3 +227,6 @@ PROGMEM const char CLIP_PAGE[] =
 "</body>\n"
 "\n"
 "</html>\n";
+
+
+#endif /*TEMPLATES_H*/
