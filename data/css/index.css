@@ -1,0 +1,670 @@
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #4CAF50;
+    --background-color: #f9f9f9;
+    --text-color: #333;
+    --button-radius: 5px;
+    --base-node-size: 30px;
+    --border-color: #ddd;
+    --font-family: Arial, Helvetica, sans-serif;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --transition-duration: 0.3s;
+}
+
+body {
+    display: flex;
+    font-family: var(--font-family);
+    flex-direction: column;
+    justify-content: top;
+    align-items: center;
+    height: 100vh;
+    /* Changed the height to 100vh */
+    margin: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+/* ---------- Container Styles ---------- */
+.container {
+    position: relative;
+    align-items: center;
+    width: 100vw; /* Use 160% of viewport width */
+    max-width: 500px; /* Increased max-width */
+    height: 80vh; /* Use 160% of viewport height */
+    max-height: 250px; /* Increased max-height */
+    display: block;
+}
+
+.hex-wrap {
+    position: absolute;
+    display: flex;
+    width: var(--base-node-size);
+    height: var(--base-node-size);
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.hex {
+    width: var(--base-node-size);
+    height: var(--base-node-size);
+    background-color: #000;
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    cursor: pointer;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+.line {
+    position: absolute;
+    background-color: #000;
+    height: 4px;
+    transform-origin: 0 0;
+    z-index: -1;
+}
+
+/* ---------- Node Styles ---------- */
+.hex-wrap.regularNode .hex {
+    background-color: #000;
+    filter: none;
+}
+
+.hex-wrap.ActiveandSelectedNode .hex,
+.hex-wrap.SelectedNode .hex {
+    background-color: red;
+    filter: none;
+}
+
+.hex-wrap.ActiveNode,
+.hex-wrap.ActiveandSelectedNode {
+    position: absolute;
+    animation: pulse-active-rainbow var(--pulse-duration) infinite;
+}
+
+.hex-wrap.ActiveNode::before,
+.hex-wrap.ActiveandSelectedNode::before {
+    content: "";
+    position: absolute;
+    background-color: green;
+    filter: blur(10px);
+    opacity: 0.7;
+    z-index: -1;
+    animation: pulse-active-rainbow-overlay var(--pulse-duration) infinite;
+}
+
+
+@keyframes pulse-active-rainbow {
+    0% {
+        filter: drop-shadow(0 0 5px var(--active-node-color-0)) drop-shadow(0 0 15px var(--active-node-color-0)) drop-shadow(0 0 20px var(--active-node-color-0));
+    }
+
+    16% {
+        filter: drop-shadow(0 0 5px var(--active-node-color-1)) drop-shadow(0 0 15px var(--active-node-color-1)) drop-shadow(0 0 20px var(--active-node-color-1));
+    }
+
+    33% {
+         filter: drop-shadow(0 0 5px var(--active-node-color-2)) drop-shadow(0 0 15px var(--active-node-color-2)) drop-shadow(0 0 20px var(--active-node-color-2));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 10px var(--active-node-color-3)) drop-shadow(0 0 20px var(--active-node-color-3)) drop-shadow(0 0 30px var(--active-node-color-3));
+    }
+    66% {
+         filter: drop-shadow(0 0 5px var(--active-node-color-4)) drop-shadow(0 0 15px var(--active-node-color-4)) drop-shadow(0 0 20px var(--active-node-color-4));
+    }
+
+    83% {
+        filter: drop-shadow(0 0 5px var(--active-node-color-5)) drop-shadow(0 0 15px var(--active-node-color-5)) drop-shadow(0 0 20px var(--active-node-color-5));
+    }
+    100% {
+          filter: drop-shadow(0 0 5px var(--active-node-color-0)) drop-shadow(0 0 15px var(--active-node-color-0)) drop-shadow(0 0 20px var(--active-node-color-0));
+    }
+}
+
+@keyframes pulse-active-rainbow-overlay {
+    0% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.7;
+    }
+}
+
+/* ---------- Modal Styles ---------- */
+.modal {
+    position: fixed;
+    bottom: -100vh;
+    left: 5%;
+    display: none;
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px var(--shadow-color);
+    transition: bottom 0.6s ease-in-out;
+    z-index: 1000;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.modal.show {
+    bottom: 5%;
+    display: flex;
+}
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    display: none;
+    transition: opacity 0.3s ease;
+}
+.overlay.show {
+}
+
+.modal button {
+    padding: 5px 10px;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal button:hover {
+    background-color: #0056b3;
+}
+
+.modal-settings {
+    display: none;
+}
+
+.modal-settings.show {
+    display: block;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 0px;
+    margin-bottom: 10px;
+}
+
+.modal-buttons button {
+   padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+}
+.modal-buttons button[title="Edit Node"] {
+    background-color: #ffa500;
+}
+
+#discardNodeButton {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+/* --- Switch Style --- */
+.switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+  margin-left: 10px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+    border-radius: 34px;
+  pointer-events: auto; /* Allow pointer events on slider */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--secondary-color);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--secondary-color);
+}
+
+input:checked + .slider:before {
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.switch-container label {
+    margin-right: 10px;
+}
+
+/* ---------- Control Styles ---------- */
+.controls {
+    margin-top: 90px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    width: auto;
+}
+
+.controls button {
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    background-color: var(--secondary-color);
+    color: #fff;
+    border: none;
+    transition: background-color var(--transition-duration);
+}
+
+.controls button:hover {
+    background-color: #45a049;
+}
+
+#deselectAll {
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    background-color: #b92a2a;
+    color: #fff;
+    border: none;
+    display: block;
+    transition: background-color var(--transition-duration);
+}
+
+/* ---------- Global Settings Modal Styles ---------- */
+.global-settings-modal {
+    position: fixed;
+    top: 5%;
+    left: 5%;
+    transform: none;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--button-radius);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    z-index: 1001;
+    display: none;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.global-settings-modal.show {
+    display: flex;
+}
+
+.global-settings-modal .setting,
+.modal .setting-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.global-settings-modal input,
+.global-settings-modal select,
+.modal input,
+.modal select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 5px;
+}
+
+.global-settings-modal input[type="number"],
+.global-settings-modal input[type="range"] {
+    width: 100px;
+}
+
+.global-settings-modal label {
+    margin-right: 10px;
+}
+
+/* ---------- Menu Styles ---------- */
+.menu {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    align-items: center;
+}
+
+.menu button {
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    border: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    transition: background-color var(--transition-duration);
+}
+
+.menu button:hover {
+    background-color: #e0e0e0;
+}
+
+/* ----------Aside Styles ---------- */
+aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* ---------- Fire Ripple Button Style ---------- */
+.fire-ripple-button {
+     padding: 10px 20px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    border: 1px solid var(--border-color);
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    margin-bottom: 20px;
+    transition: background-color var(--transition-duration);
+}
+
+/* ---------- Submit Button Styles ---------- */
+.submit-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.submit-buttons button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    border: 1px solid var(--border-color);
+    transition: background-color var(--transition-duration);
+}
+
+.submit-buttons button[id="submitButton"] {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+.submit-buttons button[id="discardButton"] {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.submit-buttons button:hover {
+    background-color: #bfbfbf;
+}
+
+/* ---------- Setting Container Style ---------- */
+.setting-container {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.setting-container label {
+    margin-right: 10px;
+}
+
+.edit-button-checkbox {
+    margin-left: 10px;
+}
+
+/* Information Icon Style*/
+.modal h2 {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+
+.modal .info-icon {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+    margin-left: 5px;
+    color: var(--primary-color);
+    font-size: 14px;
+    font-style: normal;
+    border: 1px solid;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    text-align: center;
+}
+
+.modal .info-icon .tooltiptext {
+    visibility: hidden;
+    width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    top: -35px;
+    left: 100%;
+    transform: translateX(10px);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.modal .info-icon:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+
+/* ---------- Color Styles ---------- */
+.color-container {
+    display: inline-grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--base-node-size), 1fr));
+    gap: 5px;
+    align-items: center;
+    width: 220px;
+    padding: 1px;
+    margin-bottom: 10px;
+    margin-top: 3px;
+    border-radius: 4px;
+}
+
+.color-container .color-swatch {
+    width: 25px;
+    height: 25px;
+    padding: 0 !important;
+    margin: 0;
+    border: 1px solid var(--border-color);
+}
+
+.color-button-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0;
+    width: auto;
+    justify-content: flex-start;
+}
+
+.color-button-container button:disabled {
+    background-color: #ddd; /* Gray out */
+    color: #999;
+    cursor: auto; /* Indicate not clickable */
+}
+
+.add-color-button,
+.remove-color-button {
+    margin-left: 5px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.remove-color-button {
+    margin-right: 10px;
+}
+
+.color-button-container button {
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.color-button-container #addModalColorButton,
+.color-button-container #removeModalColorButton {
+    display: inline-flex;
+}
+
+/* ---------- Effect Selector Styles ---------- */
+.effect-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 20px;
+    margin-bottom: 20px;
+}
+
+.effect-selector-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#effectDropdown {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    min-width: 150px;
+}
+
+.effect-selector button,
+.global-settings-modal .submit-buttons button,
+.modal-buttons button{
+    padding: 8px;
+    cursor: pointer;
+    border-radius: var(--button-radius);
+    border: 1px solid var(--border-color);
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    transition: background-color var(--transition-duration);
+}
+
+/*Specific color for each effect button*/
+.effect-selector button[title="Edit Effect"] {
+    background-color: #ffa500;
+    /* Orange */
+    color: #fff;
+    margin-right: 20px;
+}
+
+.effect-selector button[title="Add Effect"] {
+    background-color: var(--secondary-color);
+    /* Green */
+    color: #fff;
+}
+
+.effect-selector button[title="Delete Effect"] {
+    background-color: #f44336;
+    /* Red */
+    color: #fff;
+}
+
+/*Style for the save button*/
+.effect-selector button[title="Save Changes"] {
+    width: auto;
+    height: auto;
+    padding: 8px 15px;
+    background-color: var(--primary-color);
+    /* Blue */
+    color: #fff;
+}
+
+.effect-selector button:active,
+.global-settings-modal .submit-buttons button:active,
+.modal-buttons button[title="Edit Node"]:active{
+    background-color: #bfbfbf;
+}
+
+/* ---------- Effect Name Modal Styles ---------- */
+.effect-name-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px var(--shadow-color);
+    z-index: 1002;
+    /* Ensure it's above overlay */
+}
+
+.effect-name-modal input[type="text"] {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}

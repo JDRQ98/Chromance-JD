@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromance Effect Editor</title>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
+    <header>
+        <h1 id="effectTitle">Effect editor: Default</h1>
+        <div class="effect-selector">
+            <div class="effect-selector-container">
+                <select id="effectDropdown"></select>
+                <button id="editEffectButton" title="Edit Effect" aria-label="Edit Effect">✏️</button>
+                <button id="addEffectButton" title="Add Effect" aria-label="Add Effect">➕</button>
+                <button id="deleteEffectButton" title="Delete Effect" aria-label="Delete Effect">🗑️</button>
+            </div>
+        </div>
+    </header>
+    <main>
+        <div class="container" id="container">
+            <!-- Nodes -->
+            <div class="hex-wrap">
+                <div title="node 0" class="hex" data-id="0"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 1" class="hex" data-id="1"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 2" class="hex" data-id="2"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 3" class="hex" data-id="3"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 4" class="hex" data-id="4"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 5" class="hex" data-id="5"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 6" class="hex" data-id="6"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 7" class="hex" data-id="7"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 8" class="hex" data-id="8"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 9" class="hex" data-id="9"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 10" class="hex" data-id="10"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 11" class="hex" data-id="11"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 12" class="hex" data-id="12"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 13" class="hex" data-id="13"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 14" class="hex" data-id="14"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 15" class="hex" data-id="15"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 16" class="hex" data-id="16"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 17" class="hex" data-id="17"></div>
+            </div>
+            <div class="hex-wrap">
+                <div title="node 18" class="hex" data-id="18"></div>
+            </div>
+        </div>
+        <aside>
+            <nav class="menu">
+            </nav>
+            <nav class="controls">
+                <button id="selectBiNodes">Select Bi-Nodes</button>
+                <button id="selectTriNodes">Select Tri-Nodes</button>
+                <button id="selectQuadNodes">Select Quad-Nodes</button>
+                <button id="deselectAll">De-select all</button>
+            </nav>
+            <nav class="menu">
+                <button id="selectAllActive">Select all active nodes</button>
+                <button id="deactivateAllNodes">De-activate all nodes</button>
+            </nav>
+        </aside>
+        <div class="global-settings-modal" id="globalSettingsModal">
+            <h2>Global Effect settings</h2>
+            <div class="setting">
+                <label for="effectDuration">Effect name:</label>
+                <input type="text" id="effectNameInput" placeholder="Enter effect name" style="margin-bottom: 10px;">
+            </div>
+            <button class="fire-ripple-button" id="fireRippleButton">Fire Ripple</button>
+            <div class="setting">
+                <label for="effectBasis">Effect Basis:</label>
+                <select id="effectBasis">
+                    <option value="ripple">Ripple</option>
+                    <option value="segment">Segment</option>
+                </select>
+            </div>
+            <div class="setting">
+                <label for="effectDuration">Effect duration in ms [1 - 60000]:</label>
+                <input type="number" id="effectDuration" min="1" max="60000" value="3000">
+            </div>
+            <div class="setting">
+                <label for="desiredBehavior">Enter the desired behavior:</label>
+                <select id="desiredBehavior">
+                    <option value="normal">Normal</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="setting">
+                <label for="rippleDirection">Enter ripple direction:</label>
+                <select id="rippleDirection">
+                    <option value="allDirections">All directions</option>
+                    <option value="inward">Inward</option>
+                    <option value="outward">Outward</option>
+                </select>
+            </div>
+            <div class="setting">
+                <label for="rippleDelay">Enter delay between ripples in ms [1 - 60000]:</label>
+                <input type="number" id="rippleDelay" min="1" max="60000" value="3000">
+            </div>
+            <div class="setting">
+                <label for="rippleLifeSpan">Enter ripple life span in ms [1 - 60000]:</label>
+                <input type="number" id="rippleLifeSpan" min="1" max="60000" value="3000">
+            </div>
+            <div class="setting">
+                <label for="rippleSpeed">Enter ripple speed [0.01 - 5]:</label>
+                <input type="range" id="rippleSpeed" min="0.01" max="5" step="0.01" value="0.5">
+                <span id="rippleSpeedDisplay">0.5</span>
+            </div>
+            <div class="setting">
+                <label for="decayPerTick">Enter decay per tick [0.90 - 1]:</label>
+                <input type="range" id="decayPerTick" min="0.90" max="1" step="0.001" value="0.985">
+                <span id="decayPerTickDisplay">0.985</span>
+            </div>
+            <div class="setting">
+                <label>Colors:</label>
+                <div id="globalColorContainer" class="color-container">
+                    <input type="color" value="#FF0000" class="color-swatch">
+                </div>
+                <div class="color-button-container">
+                    <button id="addGlobalColorButton" class="add-color-button">+</button>
+                    <button id="removeGlobalColorButton" class="remove-color-button">-</button>
+                    <button id="globalRainbowButton">Rainbow</button>
+                    <button id="globalRandomButton">Random</button>
+                    <button id="globalSimilarButton">Similar</button>
+                </div>
+            </div>
+            <div class="setting">
+                <label for="hueDeltaTick">Enter hue delta per tick [0 - 500]:</label>
+                <input type="number" id="hueDeltaTick" min="0" max="500" value="200">
+            </div>
+            <div class="setting">
+                <label for="numberOfRipples">Enter the max number of ripples per fire:</label>
+                <input type="text" id="numberOfRipples" value="1">
+            </div>
+            <div class="submit-buttons">
+                <button id="restoreDefaultsButton">Restore defaults</button>
+                <button id="submitButton">💾</button>
+                <button id="discardButton">🗑️</button>
+            </div>
+        </div>
+        <div class="overlay" id="overlay"></div>
+        <div class="modal" id="modal">
+            <h2>Node Properties
+                <i class="info-icon">i
+                    <span class="tooltiptext">Hint: Node settings will follow global settings by default, unless
+                        overwritten
+                        below by the user</span>
+                </i>
+            </h2>
+            <div id="selectedNodesDisplay" class="overlay-selected-nodes">No nodes selected</div>
+            <div class="setting-container">
+                <div class="switch-container">
+                    <label for="activateNodeCheckbox">Activate Node(s):</label>
+                    <div class="switch">
+                        <input type="checkbox" id="activateNodeCheckbox">
+                        <span class="slider round"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-settings">
+                <div class="setting-container">
+                    <label>Starting Color(s):</label>
+                    <div class="color-button-container">
+                        <button id="addModalColorButton" class="add-color-button">+</button>
+                        <button id="removeModalColorButton" class="remove-color-button">-</button>
+                        <button id="modalRainbowButton">Rainbow</button>
+                        <button id="modalRandomButton">Random</button>
+                        <button id="modalSimilarButton">Similar</button>
+                    </div>
+                    <div id="modalColorContainer" class="color-container">
+                    </div>
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="startingColor">
+                </div>
+                <div class="setting-container">
+                    <label for="modalDesiredBehavior">Desired behavior:</label>
+                    <select id="modalDesiredBehavior">
+                        <option value="normal">Normal</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="desiredBehavior">
+                </div>
+                <div class="setting-container">
+                    <label for="modalRippleDirection">Ripple direction:</label>
+                    <select id="modalRippleDirection">
+                        <option value="allDirections">All directions</option>
+                        <option value="inward">Inward</option>
+                        <option value="outward">Outward</option>
+                    </select>
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="rippleDirection">
+                </div>
+                <div class="setting-container">
+                    <label for="modalRippleDelay">Delay between ripples [1 - 60000]:</label>
+                    <input type="number" id="modalRippleDelay" min="1" max="60000" value="3000">
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="rippleDelay">
+                </div>
+                <div class="setting-container">
+                    <label for="modalRippleLifeSpan">Ripple life span [1 - 60000]:</label>
+                    <input type="number" id="modalRippleLifeSpan" min="1" max="60000" value="3000">
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="rippleLifeSpan">
+                </div>
+                <div class="setting-container">
+                    <label for="modalRippleSpeed">Ripple speed [0.01 - 5]:</label>
+                    <input type="range" id="modalRippleSpeed" min="0.01" max="5" step="0.01" value="0.5">
+                    <span id="modalRippleSpeedDisplay">0.5</span>
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="rippleSpeed">
+                </div>
+                <div class="setting-container">
+                    <label for="modalDecayPerTick">Decay per tick [0.90 - 1]:</label>
+                    <input type="range" id="modalDecayPerTick" min="0.90" max="1" step="0.001" value="0.985">
+                    <span id="modalDecayPerTickDisplay">0.985</span>
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="decayPerTick">
+                </div>
+                <div class="setting-container">
+                    <label for="modalHueDeltaTick">Hue delta per tick [0 - 500]:</label>
+                    <input type="number" id="modalHueDeltaTick" min="0" max="500" value="200">
+                    <input type="checkbox" class="edit-button-checkbox" data-setting="hueDeltaTick">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button id="saveNodeButton">💾</button>
+                <button id="editNodeButton" title="Edit Node" aria-label="Edit Node">✏️</button>
+                <button id="discardNodeButton">🗑️</button>
+            </div>
+        </div>
+    </main>
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
