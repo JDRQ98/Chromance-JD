@@ -21,7 +21,7 @@
 #define UDP_RETRY_DELAY 5  // Delay in milliseconds between retries
 const int udpPort = 8888;                    // Replace with the desired UDP port
 
-#define ALEXA_DEVICE_NAME "hexagono prueba"
+#define ALEXA_DEVICE_NAME "hexagono"
 
 extern const char *udpServerIP;
 extern AsyncWebServer server;

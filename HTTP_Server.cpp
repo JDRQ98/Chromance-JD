@@ -8,15 +8,6 @@ using namespace std;
 #include "MCAL/EEP.h"
 #include "Alexa/SimpleJson.h"
 
-
-// WiFi stuff - CHANGE FOR YOUR OWN NETWORK!
-const char* ssid = "TP-Link-150";
-const char* password = "Cenote#150";
-
-const IPAddress ip(192, 168, 1, 241);  // IP address that THIS DEVICE should request
-const IPAddress gateway(192, 168, 1, 250);  // Your router
-const IPAddress subnet(255, 255, 255, 0);  // Your subnet mask (find it from your router's admin panel)
-
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 const long timeout = 2000;
@@ -94,6 +85,8 @@ void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* dat
     //String body = request->arg("plain");
     DEBUG_MSG_HUE("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
     DEBUG_MSG_HUE((const char*) data);
+    udp_println("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
+    udp_println((const char*) data);
 
     DynamicJsonDocument bodyJSON(1024);
     DeserializationError error = deserializeJson(bodyJSON, data, len);
@@ -218,36 +211,10 @@ void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
 
 /* to be called once at startup */
 void WiFi_init(void){
-  /* Setup WiFi network */
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  WiFi.config(ip, gateway, subnet);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    DEBUG_MSG_HUE("Connection Failed! Rebooting...");
-    delay(1000);
-    ESP.restart();
-  }
-
   /* Setup REST API Handlers */
-  //server.on("/dashboard", handle_OnConnect);
-  // Route to set GPIO to HIGH
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/getInternalVariables", handle_getInternalVariables); 
-  //server.on("/updateInternalVariables", HTTP_POST, handle_SendDashboard, nullptr, handle_UpdateInternalVariables); 
-  
-  /* server already begun by hueBrdige */
-  //server.begin();
-  //server.enableDelay(false); /* refer to comment from scottchiefbaker in https://github.com/espressif/arduino-esp32/issues/7708*/
-  Serial.printf("Wifi connected, SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
-  //Serial.println(WiFi.localIP());
-
-  // Setup Multicast DNS https://en.wikipedia.org/wiki/Multicast_DNS 
-  // You can open http://hexagono.local in Chrome on a desktop
-  DEBUG_MSG_HUE("Setup MDNS for http://hexagono.local");
-  if (!MDNS.begin("hexagono"))
-  {
-    DEBUG_MSG_HUE("Error setting up MDNS responder!");
-  }
+  server.on("/updateInternalVariables", HTTP_POST, nullptr, nullptr, handle_UpdateInternalVariables); 
 }

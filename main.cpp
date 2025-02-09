@@ -53,6 +53,7 @@ void setup() {
   pinMode(LED, OUTPUT);
   Strips_init();
   WiFi_Utilities_init();
+  udp_println("Chromance device is ONLINE!");
 
 }
 

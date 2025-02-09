@@ -38,14 +38,14 @@ void HueBridge::start()
     webServer.on("/api/userid/lights", HTTP_GET, [this]() { handle_GetState(); });
     webServer.on("/api/userid/lights/1", HTTP_GET, [this]() { handle_GetState(); });
     webServer.on("/api/userid/lights/1/state", HTTP_PUT, [this]() { handle_PutState(); });
-    webServer.on("/", HTTP_GET, [this]() { handle_root(); });
+    //webServer.on("/", HTTP_GET, [this]() { handle_root(); });
     webServer.on("/debug/clip.html", HTTP_GET, [this]() { handle_clip(); });
 
     webServer.onNotFound( [this]() { handle_CORSPreflight(); });
 
     webServer.enableCORS();
     webServer.begin();
-    DEBUG_MSG_HUE("HTTP server started");
+    DEBUG_MSG_HUE("HTTP server started\n");
 
     //upnp.init();
 }
@@ -426,7 +426,8 @@ void HueBridge::handle_CORSPreflight(){
     if ( webServer.method() == HTTP_OPTIONS ){
         DEBUG_MSG_HUE("\nHandling handle_CORSPreflight (OPTIONS %s) request from %s\n", webServer.uri().c_str(), webServer.client().remoteIP().toString().c_str());
 
-        webServer.sendHeader("Access-Control-Allow-Methods", "PUT, GET, OPTIONS");
+        webServer.sendHeader("Access-Control-Allow-Origin", "*"); // DEVELOPMENT ONLY - REPLACE WITH YOUR ORIGIN
+        webServer.sendHeader("Access-Control-Allow-Methods", "PUT, GET, OPTIONS, POST");
         webServer.sendHeader("Access-Control-Allow-Headers", "Content-Type");
         webServer.send(204);
     }

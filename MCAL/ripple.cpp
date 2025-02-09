@@ -4,8 +4,8 @@
 int lengths[NUMBER_OF_STRIPS] = {165, 165}; 
 
 //strip(NUMLEDS, DATAPIN, CLOCKPIN, DOTSTART_BRG)
-Adafruit_NeoPixel strip0(lengths[0], 14,  NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip1(lengths[1], 12,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip0(lengths[0], 33,  NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip1(lengths[1], 32,  NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strips[NUMBER_OF_STRIPS] = {strip0, strip1};
 
 // These ripples are endlessly reused so we don't need to do any memory management

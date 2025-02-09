@@ -1,5 +1,5 @@
 #include <WiFi_utilities.h>
-
+#include <ESPmDNS.h>
 
 /* Local variables */
 const char *udpServerIP = UDP_SERVER_IP;
@@ -13,6 +13,7 @@ static unsigned long ota_progress_millis = 0;
 WiFiUDP udp;
 IPAddress udpServer;
 bool      udpConnected = false;
+
 
 static void setupWebServer(void){
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -53,14 +54,12 @@ static void setupWifiManager(void)
   WiFiManager wm;
 
   bool res;
-  // res = wm.autoConnect(); // auto generated AP name from chipid
-  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-  res = wm.autoConnect("AutoConnectAP", "password"); // password protected ap
+
+  res = wm.autoConnect("Chromance"); // AP not password protected
 
   if (!res)
   {
     Serial.println("Failed to connect");
-    // ESP.restart();
   }
   else
   {
@@ -117,6 +116,12 @@ void WiFi_Utilities_init(void)
   hueBridge.addDevice(ALEXA_DEVICE_NAME);
   hueBridge.onSetState(handle_SetState);
   hueBridge.start();
+
+  DEBUG_MSG_HUE("Setup MDNS for http://hexagono.local");
+  if (!MDNS.begin("hexagono"))
+  {
+    DEBUG_MSG_HUE("Error setting up MDNS responder!");
+  }
 }
 
 void WiFi_Utilities_loop(void)
