@@ -13,7 +13,7 @@
 
 
 //byte ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][3]; /* used for RGB-based control */
-extern short ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; /* used for hue-based control */
+extern int ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; /* used for hue-based control */
 
 #define beginningof(S) ((S) * NUMBER_OF_LEDS_PER_SEGMENT)
 #define endof(S) (beginningof(S) + (NUMBER_OF_LEDS_PER_SEGMENT-1))

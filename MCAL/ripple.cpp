@@ -116,6 +116,23 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+void SetPixelColor_AllLEDs(){
+  for (int segment = 0; segment < NUMBER_OF_SEGMENTS; segment++) {
+    for (int fromBottom = 0; fromBottom < NUMBER_OF_LEDS_PER_SEGMENT; fromBottom++) {
+      int strip = ledAssignments[segment][0];
+      int led;
+
+      if (ledAssignments[segment][2] < ledAssignments[segment][1]) { // Normal order
+        led = ledAssignments[segment][2] + fromBottom;
+      } else { // Reversed order
+        led = ledAssignments[segment][1] + (NUMBER_OF_LEDS_PER_SEGMENT - 1 - fromBottom);
+      }
+
+      unsigned long color = strips[strip].ColorHSV(ledHues[segment][fromBottom][0], 255, ledHues[segment][fromBottom][1]);
+      strips[strip].setPixelColor(led, color);
+    }
+  }
+}
 
 void Strips_init(){
    for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
@@ -136,21 +153,7 @@ void Ripple_MainFunction(){
   
 
   // SetPixelColor all leds to ledColors
-  for (int segment = 0; segment < NUMBER_OF_SEGMENTS; segment++) {
-    for (int fromBottom = 0; fromBottom < NUMBER_OF_LEDS_PER_SEGMENT; fromBottom++) {
-      int strip = ledAssignments[segment][0];
-      int led;
-
-      if (ledAssignments[segment][2] < ledAssignments[segment][1]) { // Normal order
-        led = ledAssignments[segment][2] + fromBottom;
-      } else { // Reversed order
-        led = ledAssignments[segment][1] + (NUMBER_OF_LEDS_PER_SEGMENT - 1 - fromBottom);
-      }
-
-      unsigned long color = strips[strip].ColorHSV(ledHues[segment][fromBottom][0], 255, ledHues[segment][fromBottom][1]);
-      strips[strip].setPixelColor(led, color);
-    }
-  }
+  SetPixelColor_AllLEDs();
 
   /* Advance all ripples */
   for (int i = 0; i < MAX_NUMBER_OF_RIPPLES; i++)
@@ -209,7 +212,7 @@ bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned
   }
 };
 
-bool setSegmentColor(int segment, int col)
+void setSegmentColor(int segment, int col)
 {
   int hue = fmap(col, 0, GlobalParameters.currentNumberofColors, 0, 0xFFFF);
 
@@ -220,28 +223,12 @@ bool setSegmentColor(int segment, int col)
   }
 
   // SetPixelColor all leds to ledColors
-  for (int segment = 0; segment < NUMBER_OF_SEGMENTS; segment++)
+  SetPixelColor_AllLEDs();
+
+  for (int stripIndex = 0; stripIndex < NUMBER_OF_STRIPS; stripIndex++)
   {
-    for (int fromBottom = 0; fromBottom < NUMBER_OF_LEDS_PER_SEGMENT; fromBottom++)
-    {
-      int strip = ledAssignments[segment][0];
-      int led;
-
-      if (ledAssignments[segment][2] < ledAssignments[segment][1])
-      { // Normal order
-        led = ledAssignments[segment][2] + fromBottom;
-      }
-      else
-      { // Reversed order
-        led = ledAssignments[segment][1] + (NUMBER_OF_LEDS_PER_SEGMENT - 1 - fromBottom);
-      }
-
-      unsigned long color = strips[strip].ColorHSV(ledHues[segment][fromBottom][0], 255, ledHues[segment][fromBottom][1]);
-      strips[strip].setPixelColor(led, color);
-    }
+    strips[stripIndex].show();
   }
-
-  return 1;
 };
 
 /* FireDoubleRipple

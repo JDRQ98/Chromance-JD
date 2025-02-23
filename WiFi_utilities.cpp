@@ -1,5 +1,6 @@
 #include <WiFi_utilities.h>
 #include <ESPmDNS.h>
+#include "ASW.h" /* for OTA routines */
 
 /* Local variables */
 const char *udpServerIP = UDP_SERVER_IP;
@@ -85,6 +86,9 @@ void setupWiFi(void)
 void setupOTA(void)
 {
   ElegantOTA.begin(&server); // Start ElegantOTA
+  ElegantOTA.onStart(onOTAStart);
+  ElegantOTA.onProgress(onOTAProgress);
+  ElegantOTA.onEnd(onOTAEnd);
   server.begin(); 
 }
 

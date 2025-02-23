@@ -47,6 +47,7 @@ enum directionBias {
 
 /* public functions */
 float fmap(float x, float in_min, float in_max, float out_min, float out_max);
+void SetPixelColor_AllLEDs();
 void Strips_init();
 void Ripple_MainFunction();
 void Ripple_KillAllRipples();
@@ -55,7 +56,7 @@ void Ripple_KillAllRipples();
 extern bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
 extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 extern bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
-extern bool setSegmentColor(int segment, int col);
+extern void setSegmentColor(int segment, int col);
 
 /* extern the strips for finer control if neede */
 extern Adafruit_NeoPixel strips[NUMBER_OF_STRIPS];
@@ -118,7 +119,7 @@ class Ripple {
 #endif
     }
 
-    void advance(short ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]) {
+    void advance(int ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]) {
       unsigned long age = millis() - birthday;
       hue += hueDeltaPerTick;
       if (state == dead)
@@ -473,7 +474,7 @@ class Ripple {
     static byte rippleCount;  // Used to give them unique ID's
     byte rippleId;  // Used to identify this ripple in debug output
 
-    void renderLed(short ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2], unsigned long age) {
+    void renderLed(int ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2], unsigned long age) {
       int strip = ledAssignments[position[0]][0];
       int led = ledAssignments[position[0]][2] + position[1];
       

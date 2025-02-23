@@ -1,6 +1,6 @@
 #include "mapping.h"
 
-short ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; //3rd array entry, first member is HUE and second is BRIGHTNESS
+int ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; //3rd array entry, first member is HUE and second is BRIGHTNESS
 
 // each 6-member array describes a node's connections. Begin with node closer to ceiling.
 // Beam 0 is at 12:00 and advance clockwise, -1 means nothing connected on that side
