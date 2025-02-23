@@ -9,16 +9,17 @@
 #define NUMBER_OF_STRIPS 2
 #define NUMBER_OF_SEGMENTS 30
 #define NUMBER_OF_NODES 19
+#define NUMBER_OF_LEDS_PER_SEGMENT 11
 
 
-//byte ledColors[NUMBER_OF_SEGMENTS][11][3]; /* used for RGB-based control */
-extern short ledHues[NUMBER_OF_SEGMENTS][11][2]; /* used for hue-based control */
+//byte ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][3]; /* used for RGB-based control */
+extern short ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; /* used for hue-based control */
 
-#define beginningof(S) ((S) * 11)
-#define endof(S) (beginningof(S) + 10)
+#define beginningof(S) ((S) * NUMBER_OF_LEDS_PER_SEGMENT)
+#define endof(S) (beginningof(S) + (NUMBER_OF_LEDS_PER_SEGMENT-1))
 
-#define beginningof_2ndstrip(S) ((S-15) * 11)
-#define endof_2ndstrip(S) (beginningof_2ndstrip(S) + 10)
+#define beginningof_2ndstrip(S) ((S-15) * NUMBER_OF_LEDS_PER_SEGMENT)
+#define endof_2ndstrip(S) (beginningof_2ndstrip(S) + (NUMBER_OF_LEDS_PER_SEGMENT-1))
 
 /* public variables */
 extern int nodeConnections[NUMBER_OF_NODES][6];
@@ -34,5 +35,8 @@ extern int cubePairNodes[3];
 extern int numberOfCubeOddNodes;
 extern int cubeOddNodes[3];
 extern int starburstNode;
+extern int numberOfPerimeterSegments;
+extern int numberOfPerimeterLEDs;
+extern int perimeterSegments[12U];
 
 #endif

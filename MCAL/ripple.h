@@ -57,6 +57,9 @@ extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byt
 extern bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 extern bool setSegmentColor(int segment, int col);
 
+/* extern the strips for finer control if neede */
+extern Adafruit_NeoPixel strips[NUMBER_OF_STRIPS];
+
 class Ripple {
   public:
     Ripple(int id) : rippleId(id) {
@@ -115,7 +118,7 @@ class Ripple {
 #endif
     }
 
-    void advance(short ledColors[NUMBER_OF_SEGMENTS][11][2]) {
+    void advance(short ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]) {
       unsigned long age = millis() - birthday;
       hue += hueDeltaPerTick;
       if (state == dead)
@@ -332,7 +335,7 @@ class Ripple {
                 Serial.println("  (starting at top)");
 #endif
                 state = travelingDownwards;
-                position[1] = 10; // Starting at top of 11-LED-long strip
+                position[1] = (NUMBER_OF_LEDS_PER_SEGMENT-1); // Starting at top of LED strip
               }
               break;
             }
@@ -340,7 +343,7 @@ class Ripple {
           case travelingUpwards: {
               position[1]++;
 
-              if (position[1] >= 11) {
+              if (position[1] >= NUMBER_OF_LEDS_PER_SEGMENT) {
                 // We've reached the top!
 #ifdef DEBUG_ADVANCEMENT
                 Serial.print("  Reached top of seg. ");
@@ -470,7 +473,7 @@ class Ripple {
     static byte rippleCount;  // Used to give them unique ID's
     byte rippleId;  // Used to identify this ripple in debug output
 
-    void renderLed(short ledColors[NUMBER_OF_SEGMENTS][11][2], unsigned long age) {
+    void renderLed(short ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2], unsigned long age) {
       int strip = ledAssignments[position[0]][0];
       int led = ledAssignments[position[0]][2] + position[1];
       

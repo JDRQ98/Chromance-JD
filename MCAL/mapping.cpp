@@ -1,6 +1,6 @@
 #include "mapping.h"
 
-short ledHues[NUMBER_OF_SEGMENTS][11][2];
+short ledHues[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]; //3rd array entry, first member is HUE and second is BRIGHTNESS
 
 // each 6-member array describes a node's connections. Begin with node closer to ceiling.
 // Beam 0 is at 12:00 and advance clockwise, -1 means nothing connected on that side
@@ -116,3 +116,7 @@ int cubeOddNodes[3] = {4, 11, 12};
 
 // Firing ripples that always turn in one direction will draw a starburst
 int starburstNode = 9;
+
+int numberOfPerimeterSegments = 12U;
+int numberOfPerimeterLEDs = numberOfPerimeterSegments*NUMBER_OF_LEDS_PER_SEGMENT;
+int perimeterSegments[12U] = {10, 25, 24, 17, 16, 15, 0, 1, 2, 13, 12, 11};
