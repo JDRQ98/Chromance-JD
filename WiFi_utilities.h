@@ -1,6 +1,11 @@
 #ifndef WIFI_UTILITIES_H
 #define WIFI_UTILITIES_H
 
+/*activate these defines to get additional debugging information foe HueBridge component (Alexa)*/
+//#define DEBUG_UPnP               Serial
+//#define DEBUG_HUE                Serial
+//#define ELEGANTOTA_DEBUG 1
+
 #include "Arduino.h"
 #include <WebServer.h>
 #include <WiFi.h>
@@ -10,9 +15,6 @@
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include "Alexa/HueBridge.h"
 
-/*activate these defines to get additional debugging information foe HueBridge component (Alexa)*/
-//#define DEBUG_UPnP               Serial
-//#define DEBUG_HUE                Serial
 
 /* Configuration */
 #define UDP_SERVER_IP "192.168.100.47" // Replace with the IP of your UDP listener (e.g., your computer)
@@ -34,6 +36,7 @@ extern void handle_SetState(unsigned char id, bool state, unsigned char bri, sho
 void WiFi_Utilities_init(void);
 void WiFi_Utilities_loop(void);
 
+size_t udp_printf(const char *format, ...);
 size_t udp_println(const String &msg);
 size_t udp_println(const char *msg);
 size_t udp_println(const char msg);

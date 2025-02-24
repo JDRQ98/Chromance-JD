@@ -56,17 +56,21 @@ void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, 
     // EEPROM_Read_GlobalParameters();
 
     pinMode(LED, OUTPUT);
-    Strips_init();
     WiFi_Utilities_init();
-    String ipAddress = WiFi.localIP().toString();                       // Get the microcontroller's IP address as a string
-    String udpMessage = "Chromance device is ONLINE! IP: " + ipAddress; // Create the UDP message with the IP address
-    udp_println(udpMessage);
+    Strips_init();
   }
-
+  
+  static int OTAendedLoopCalls = 0;
   void loop()
   {
     unsigned long benchmark = millis();
     int rippleFired_return = 0;
+
+    if(OTAended)
+    {
+      if(OTAendedLoopCalls%10 == 0U) udp_printf("OTA already ended. Loop execution #%d post-OTA end", OTAendedLoopCalls);
+      OTAendedLoopCalls++;
+    }
 
     WiFi_Utilities_loop();
 

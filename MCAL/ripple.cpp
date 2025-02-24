@@ -214,7 +214,7 @@ bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned
 
 void setSegmentColor(int segment, int col)
 {
-  int hue = fmap(col, 0, GlobalParameters.currentNumberofColors, 0, 0xFFFF);
+  int hue = fmap(col, 0, 360, 0, 0xFFFF);
 
   for (int i = 0U; i < NUMBER_OF_LEDS_PER_SEGMENT; i++)
   {

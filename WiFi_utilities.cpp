@@ -61,6 +61,7 @@ static void setupWifiManager(void)
   if (!res)
   {
     Serial.println("Failed to connect");
+    ESP.restart();
   }
   else
   {
@@ -85,6 +86,7 @@ void setupWiFi(void)
 
 void setupOTA(void)
 {
+  ElegantOTA.setAutoReboot(true);
   ElegantOTA.begin(&server); // Start ElegantOTA
   ElegantOTA.onStart(onOTAStart);
   ElegantOTA.onProgress(onOTAProgress);
@@ -103,6 +105,9 @@ void setupUDP(void)
     Serial.print(":");
     Serial.println(udpPort);
     udp.begin(WiFi.localIP(), udpPort);
+    String ipAddress = WiFi.localIP().toString();                       // Get the microcontroller's IP address as a string
+    String udpMessage = "Chromance device is ONLINE! IP: " + ipAddress; // Create the UDP message with the IP address
+    udp_println(udpMessage);
   }
   else
   {
@@ -134,27 +139,45 @@ void WiFi_Utilities_loop(void)
   hueBridge.handle();
 }
 
-// Custom println implementation for UDP
+/// UDP printf function (supports printf-style formatting)
+size_t udp_printf(const char *format, ...) {
+  char buffer[256]; // Choose an appropriate buffer size.  Be careful of stack overflows!
+  va_list args;
+  va_start(args, format);
+  int len = vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+
+  if (len > 0) {
+    return udp_println(buffer);
+  } else {
+    Serial.println("Error formatting UDP message in udp_printf"); // Error handling
+    return 0;
+  }
+}
+
+// Overload udp_println to accept a single char argument
+size_t udp_println(char msg) {
+  return udp_println(String(msg));
+}
+
 size_t udp_println(const String &msg) {
   size_t sent = 0;
   int retries = 0;
 
   while ((UDP_PRINT_ENABLED == 1) && (retries <= UDP_MAX_RETRIES)) {
-      
+
     if (udpConnected) {
-      if(udp.beginPacket(udpServer, udpPort))
-      {
+      if (udp.beginPacket(udpServer, udpPort)) {
         sent = udp.write((uint8_t*)msg.c_str(), msg.length());
 
-        if(udp.endPacket()){
+        if (udp.endPacket()) {
           break; // Packet sent successfully, break the retry loop
         }
 
       }
     }
 
-    if(sent == 0)
-    {
+    if (sent == 0) {
       retries++;
       Serial.print("UDP send failed (retrying ");
       Serial.print(retries);
@@ -163,14 +186,14 @@ size_t udp_println(const String &msg) {
       Serial.println(")");
       delay(UDP_RETRY_DELAY);
     }
-    
+
   }
 
   Serial.println(msg);
 
   if (sent == 0 && retries > UDP_MAX_RETRIES)
-      Serial.println("UDP message failed to send even after all retries");
-  
+    Serial.println("UDP message failed to send even after all retries");
+
   return sent;
 }
 
@@ -178,16 +201,10 @@ size_t udp_println(const char *msg) {
   return udp_println(String(msg));
 }
 
-size_t udp_println(const char msg) {
-  return udp_println(String(msg));
+size_t udp_println(int val) {
+  return udp_println(String(val));
 }
 
-size_t udp_println(int val)
-{
-    return udp_println(String(val));
-}
-
-size_t udp_println(long val)
-{
+size_t udp_println(long val) {
   return udp_println(String(val));
 }

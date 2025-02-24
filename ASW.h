@@ -8,6 +8,7 @@
 
 
 extern bool OTAinProgress;
+extern bool OTAended;
 
 void onOTAStart();
 void onOTAProgress(size_t current, size_t final);

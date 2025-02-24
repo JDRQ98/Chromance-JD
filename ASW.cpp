@@ -1,6 +1,7 @@
 #include "ASW.h"
 
 bool OTAinProgress = 0;
+bool OTAended = 0;
 
 bool FireEffect_Random(int* firstRipple, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
   int currentRipple;
@@ -319,17 +320,44 @@ void onOTAProgress(size_t current, size_t final)
     if (success)
     {
       udp_println("OTA update finished successfully!");
-      for (int segment = 0; segment < NUMBER_OF_SEGMENTS; segment++)
+      int hue = fmap(2, 0, 7, 0, 0xFFFF); //2 for green
+      for (int segmentIndex = 0; segmentIndex < numberOfPerimeterSegments; segmentIndex++)
       {
-        setSegmentColor(segment, 0x74C365); /* 0x74C365 is green for success */
+        int segment = perimeterSegments[segmentIndex];
+        for (int i = 0U; i < NUMBER_OF_LEDS_PER_SEGMENT; i++)
+        {
+          ledHues[segment][i][0] = short(hue);
+          ledHues[segment][i][1] = 255; // increase brightness
+        }
+      }
+      
+      // SetPixelColor all leds to ledColors
+      SetPixelColor_AllLEDs();      
+      for (int stripIndex = 0; stripIndex < NUMBER_OF_STRIPS; stripIndex++)
+      {
+        strips[stripIndex].show();
       }
     }
     else
     {
       udp_println("There was an error during OTA update!");
-      for (int segment = 0; segment < NUMBER_OF_SEGMENTS; segment++)
+      int hue = fmap(0, 0, 7, 0, 0xFFFF); //0 for red
+      for (int segmentIndex = 0; segmentIndex < numberOfPerimeterSegments; segmentIndex++)
       {
-        setSegmentColor(segment, 0x0); /* 0x0 is red for failure */
+        int segment = perimeterSegments[segmentIndex];
+        for (int i = 0U; i < NUMBER_OF_LEDS_PER_SEGMENT; i++)
+        {
+          ledHues[segment][i][0] = short(hue);
+          ledHues[segment][i][1] = 255; // increase brightness
+        }
+      }
+      
+      // SetPixelColor all leds to ledColors
+      SetPixelColor_AllLEDs();      
+      for (int stripIndex = 0; stripIndex < NUMBER_OF_STRIPS; stripIndex++)
+      {
+        strips[stripIndex].show();
       }
     }
+    OTAended = true;
   }
