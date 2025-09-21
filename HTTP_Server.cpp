@@ -7,6 +7,7 @@ using namespace std;
 #include "MCAL/ripple.h"
 #include "MCAL/EEP.h"
 #include "Alexa/SimpleJson.h"
+#include "WiFi_utilities.h"
 
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
@@ -81,20 +82,19 @@ void handle_getInternalVariables(AsyncWebServerRequest *request) {
 }
 
 
-void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-    //String body = request->arg("plain");
-    DEBUG_MSG_HUE("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
-    DEBUG_MSG_HUE((const char*) data);
-    udp_println("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
-    udp_println((const char*) data);
+void handle_UpdateInternalVariables_body(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+    String body = String((char*)data, len);
+    udp_printf("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
+    udp_printf("%s", body.c_str());
 
     DynamicJsonDocument bodyJSON(1024);
-    DeserializationError error = deserializeJson(bodyJSON, data, len);
-
+    DeserializationError error = deserializeJson(bodyJSON, body);
     if (error) {
-        DEBUG_MSG_HUE("Failed to parse JSON");
+        udp_printf("JSON parse error: %s", error.c_str());
+        request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}\n");
         return;
     }
+
 
     short DelayBetweenRipples = bodyJSON.containsKey("currentDelayBetweenRipples") ? bodyJSON["currentDelayBetweenRipples"] : GlobalParameters.currentDelayBetweenRipples;
     short RainbowDeltaPerTick = bodyJSON.containsKey("currentRainbowDeltaPerTick") ? bodyJSON["currentRainbowDeltaPerTick"] : GlobalParameters.currentRainbowDeltaPerTick;
@@ -108,82 +108,82 @@ void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* dat
     Decay = Decay/1000; //scaling for proper display on HTML webpage
 
     if(DelayBetweenRipples != GlobalParameters.currentDelayBetweenRipples){
-      DEBUG_MSG_HUE("received new DelayBetweenRipples from POST request: %d", DelayBetweenRipples);
+      udp_printf("received new DelayBetweenRipples from POST request: %d", DelayBetweenRipples);
       if(DelayBetweenRipples >= HTTP_CURRENTDELAYBETWEENRIPPLES_MIN && DelayBetweenRipples <= HTTP_CURRENTDELAYBETWEENRIPPLES_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentDelayBetweenRipples);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentDelayBetweenRipples);
         GlobalParameters.currentDelayBetweenRipples = DelayBetweenRipples;
       } else {
-        DEBUG_MSG_HUE(". New DelayBetweenRipples not valid; discarded.");
+        udp_printf("New DelayBetweenRipples not valid; discarded.");
       }
     }
 
     if(RainbowDeltaPerTick != GlobalParameters.currentRainbowDeltaPerTick){
-      DEBUG_MSG_HUE("received new RainbowDeltaPerTick from POST request: %d", RainbowDeltaPerTick);
+      udp_printf("received new RainbowDeltaPerTick from POST request: %d", RainbowDeltaPerTick);
       if(RainbowDeltaPerTick >= HTTP_CURRENTRAINBOWDELTAPERTICK_MIN && RainbowDeltaPerTick <= HTTP_CURRENTRAINBOWDELTAPERTICK_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentRainbowDeltaPerTick);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentRainbowDeltaPerTick);
         GlobalParameters.currentRainbowDeltaPerTick = RainbowDeltaPerTick;
       } else {
-        DEBUG_MSG_HUE(". New RainbowDeltaPerTick not valid; discarded.");
+        udp_printf("New RainbowDeltaPerTick not valid; discarded.");
       }
     }
 
     if(RippleLifeSpan != GlobalParameters.currentRippleLifeSpan){
-      DEBUG_MSG_HUE("received new RippleLifeSpan from POST request: %d", RippleLifeSpan);
+      udp_printf("received new RippleLifeSpan from POST request: %d", RippleLifeSpan);
       if(RippleLifeSpan >= HTTP_CURRENTRIPPLELIFESPAN_MIN && RippleLifeSpan <= HTTP_CURRENTRIPPLELIFESPAN_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentRippleLifeSpan);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentRippleLifeSpan);
         GlobalParameters.currentRippleLifeSpan = RippleLifeSpan;
       } else {
-        DEBUG_MSG_HUE(". New RippleLifeSpan not valid; discarded.");
+        udp_printf("New RippleLifeSpan not valid; discarded.");
       }
     }
 
     if(RippleSpeed != GlobalParameters.currentRippleSpeed){
-      DEBUG_MSG_HUE("received new Ripple Speed from POST request: %.2f", RippleSpeed);
+      udp_printf("received new Ripple Speed from POST request: %.2f", RippleSpeed);
       if(RippleSpeed >= HTTP_CURRENTRIPPLESPEED_MIN && RippleSpeed <= HTTP_CURRENTRIPPLESPEED_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %.2f", GlobalParameters.currentRippleSpeed);
+        udp_printf("New value accepted. Previous value: %.2f", GlobalParameters.currentRippleSpeed);
         GlobalParameters.currentRippleSpeed = RippleSpeed;
       } else {
-        DEBUG_MSG_HUE(". New Ripple Speed not valid; discarded.");
+        udp_printf("New Ripple Speed not valid; discarded.");
       }
     }
 
     if(NumberofColors != GlobalParameters.currentNumberofColors){
-      DEBUG_MSG_HUE("received new NumberofColors from POST request: %d", NumberofColors);
+      udp_printf("received new NumberofColors from POST request: %d", NumberofColors);
       if(NumberofColors >= HTTP_CURRENTNUMBEROFCOLORS_MIN && NumberofColors <= HTTP_CURRENTNUMBEROFCOLORS_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentNumberofColors);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentNumberofColors);
         GlobalParameters.currentNumberofColors = NumberofColors;
       } else {
-        DEBUG_MSG_HUE(". New NumberofColors not valid; discarded.");
+        udp_printf("New NumberofColors not valid; discarded.");
       }
     }
 
     if(Behavior != GlobalParameters.currentBehavior){
-      DEBUG_MSG_HUE("received new Behavior from POST request: %d", Behavior);
+      udp_printf("received new Behavior from POST request: %d", Behavior);
       if(Behavior >= 0 && Behavior <= 4){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentBehavior);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentBehavior);
         GlobalParameters.currentBehavior = Behavior;
       } else {
-        DEBUG_MSG_HUE(". New Behavior not valid; discarded.");
+        udp_printf("New Behavior not valid; discarded.");
       }
     }
 
     if(Direction != GlobalParameters.currentDirection){
-      DEBUG_MSG_HUE("received new Direction from POST request: %d", Direction);
+      udp_printf("received new Direction from POST request: %d", Direction);
       if(Direction >= -1 && Direction <= 6){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %d", GlobalParameters.currentDirection);
+        udp_printf("New value accepted. Previous value: %d", GlobalParameters.currentDirection);
         GlobalParameters.currentDirection = Direction;
       } else {
-        DEBUG_MSG_HUE(". New Direction not valid; discarded.");
+        udp_printf("New Direction not valid; discarded.");
       }
     }
 
     if(Decay != GlobalParameters.currentDecay){
-      DEBUG_MSG_HUE("received new Decay factor from POST request: %.3f", Decay);
+      udp_printf("received new Decay factor from POST request: %.3f", Decay);
       if(Decay >= HTTP_CURRENTDECAY_MIN && Decay <= HTTP_CURRENTDECAY_MAX){ /* new value received */
-        DEBUG_MSG_HUE("New value accepted. Previous value: %.3f", GlobalParameters.currentDecay);
+        udp_printf("New value accepted. Previous value: %.3f", GlobalParameters.currentDecay);
         GlobalParameters.currentDecay = Decay;
       } else {
-        DEBUG_MSG_HUE(". New Decay not valid; discarded.");
+        udp_printf("New Decay not valid; discarded.");
       }
     }
 
@@ -192,29 +192,29 @@ void handle_UpdateInternalVariables(AsyncWebServerRequest* request, uint8_t* dat
 
 
 void handle_ManualRipple(AsyncWebServerRequest *request) {
-  DEBUG_MSG_HUE("Received manual ripple request");
+  udp_printf("Received manual ripple request");
   manualFireRipple = 1;
   request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
 }
 
 /* checkbox handling */
 void handle_MasterFireRippleEnabled_On(AsyncWebServerRequest *request) {
-  DEBUG_MSG_HUE("Master Automatic ripples: ON");
+  udp_printf("Master Automatic ripples: ON");
   GlobalParameters.loop_MasterFireRippleEnabled = 1;
 }
 
 void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
-  DEBUG_MSG_HUE("Master Automatic ripples: OFF");
+  udp_printf("Master Automatic ripples: OFF");
   GlobalParameters.loop_MasterFireRippleEnabled = 0;
 }
 /* end of checkbox handling*/
 
 /* to be called once at startup */
-void WiFi_init(void){
+void HTTP_backend_init(void){
   /* Setup REST API Handlers */
   server.on("/ManualRipple", handle_ManualRipple);
   server.on("/MasterFireRippleEnabled/on", handle_MasterFireRippleEnabled_On);
   server.on("/MasterFireRippleEnabled/off", handle_MasterFireRippleEnabled_Off);
   server.on("/getInternalVariables", handle_getInternalVariables); 
-  server.on("/updateInternalVariables", HTTP_POST, nullptr, nullptr, handle_UpdateInternalVariables); 
+  server.on("/updateInternalVariables", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, handle_UpdateInternalVariables_body);
 }

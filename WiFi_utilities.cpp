@@ -46,6 +46,8 @@ static void setupWebServer(void){
 
   server.on("/js/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(SPIFFS, "/js/nodeManager.js", String(), false, nullptr); });
+
+  HTTP_backend_init();
 }
 
 static void setupWifiManager(void)

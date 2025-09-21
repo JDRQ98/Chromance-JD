@@ -80,7 +80,6 @@ extern GlobalParameters_struct GlobalParameters;
 
 extern boolean manualFireRipple;
 
-void WiFi_MainFunction(void);
-void WiFi_init(void);
+void HTTP_backend_init(void);
 
 #endif /* HTTP_SERVER_H */

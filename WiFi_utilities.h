@@ -17,7 +17,7 @@
 
 
 /* Configuration */
-#define UDP_SERVER_IP "192.168.100.47" // Replace with the IP of your UDP listener (e.g., your computer)
+#define UDP_SERVER_IP "192.168.100.18" // Replace with the IP of your UDP listener (e.g., your computer)
 #define UDP_PRINT_ENABLED 1
 #define UDP_MAX_RETRIES 1    // Number of retries
 #define UDP_RETRY_DELAY 5  // Delay in milliseconds between retries
