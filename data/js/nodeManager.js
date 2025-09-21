@@ -257,6 +257,11 @@ function initNodeManager(updateNodeStyles, updateModal, globalSettings, nodeSpec
         updateModal([], nodeManager.getActiveNodes().map(node => node.id), nodeSpecificSettings, globalSettings, updateNodeStyles);
         updateCurrentEffect(globalSettings, nodeSpecificSettings, nodeManager.getActiveNodes().map(node => node.id));
     });
+    document.getElementById('applyChanges').addEventListener('click', () => {
+        console.log('Apply Changes button pressed');
+        // Call the function to send the configuration to the microcontroller.
+        window.mainJS.sendConfigurationToMicrocontroller();  // Access through window to avoid scope issues
+    });
       updateNodeStyles(globalSettings, nodeSpecificSettings);
 }
 
