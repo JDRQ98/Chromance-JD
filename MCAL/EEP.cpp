@@ -32,25 +32,25 @@ unsigned int EEPROM_ParseProfiles() {
 }
 
 void EEPROM_StoreProfile(unsigned int profileNumber) {
-  ProfileParameters_struct local_Profile = {
-    .ProfileHash = (unsigned int) PROFILE_HASH,
-    .ProfileID = profileNumber,
-    .loop_MasterFireRippleEnabled = GlobalParameters.loop_MasterFireRippleEnabled,
-    .currentNumberofRipples = MAX_NUMBER_OF_RIPPLES,
-    .currentNumberofColors = GlobalParameters.currentNumberofColors,
-    .currentBehavior = GlobalParameters.currentBehavior,
-    .currentDelayBetweenRipples = GlobalParameters.currentDelayBetweenRipples, /* in milliseconds */
-    .currentRainbowDeltaPerTick = GlobalParameters.currentRainbowDeltaPerTick, /* units: hue */
-    .currentRippleLifeSpan = GlobalParameters.currentRippleLifeSpan, /* in milliseconds */
-    .currentRippleSpeed = GlobalParameters.currentRippleSpeed,
-    .currentDecay = GlobalParameters.currentDecay,
-  };
-  unsigned int EEP_ProfileSize = sizeof(local_Profile);
-DEBUG_MSG_EEP("Storing profile %d at address %d \n", profileNumber, (profileNumber * EEP_ProfileSize));
-  EEPROM.put((profileNumber * EEP_ProfileSize), local_Profile);
-  EEPROM.commit();
-  ProfilesAvailable[profileNumber] = 1U;   
-  Global_NumberOfProfiles_InDFLS++;
+//   ProfileParameters_struct local_Profile = {
+//     .ProfileHash = (unsigned int) PROFILE_HASH,
+//     .ProfileID = profileNumber,
+//     .loop_MasterFireRippleEnabled = GlobalParameters.loop_MasterFireRippleEnabled,
+//     .currentNumberofRipples = MAX_NUMBER_OF_RIPPLES,
+//     .currentNumberofColors = GlobalParameters.currentNumberofColors,
+//     .currentBehavior = GlobalParameters.currentBehavior,
+//     .currentDelayBetweenRipples = GlobalParameters.currentDelayBetweenRipples, /* in milliseconds */
+//     .currentRainbowDeltaPerTick = GlobalParameters.currentRainbowDeltaPerTick, /* units: hue */
+//     .currentRippleLifeSpan = GlobalParameters.currentRippleLifeSpan, /* in milliseconds */
+//     .currentRippleSpeed = GlobalParameters.currentRippleSpeed,
+//     .currentDecay = GlobalParameters.currentDecay,
+//   };
+//   unsigned int EEP_ProfileSize = sizeof(local_Profile);
+// DEBUG_MSG_EEP("Storing profile %d at address %d \n", profileNumber, (profileNumber * EEP_ProfileSize));
+//   EEPROM.put((profileNumber * EEP_ProfileSize), local_Profile);
+//   EEPROM.commit();
+//   ProfilesAvailable[profileNumber] = 1U;   
+//   Global_NumberOfProfiles_InDFLS++;
 }
 
 void EEPROM_InvalidateProfile(unsigned int profileNumber) {
@@ -79,14 +79,14 @@ DEBUG_MSG_EEP("Restored the following data: \n ProfileHash: %d. ProfileID: %d\n"
 DEBUG_MSG_EEP("   currentNumberofRipples: %d. currentNumberofColors: %d, currentBehavior: %d,\n   currentDelayBetweenRipples: %d, currentRainbowDeltaPerTick: %d, etc... \n", local_Profile.currentNumberofRipples, local_Profile.currentNumberofColors, local_Profile.currentBehavior, local_Profile.currentDelayBetweenRipples, local_Profile.currentRainbowDeltaPerTick);
   if(local_hash == (unsigned int) PROFILE_HASH){ /* only apply configuration if we restored a valid hash from EEPROM */
     ret_val = 1U; /* valid profile found */
-    GlobalParameters.loop_MasterFireRippleEnabled = local_Profile.loop_MasterFireRippleEnabled;
-    GlobalParameters.currentNumberofColors = local_Profile.currentNumberofColors;
-    GlobalParameters.currentBehavior  = local_Profile.currentBehavior;
-    GlobalParameters.currentDelayBetweenRipples = local_Profile.currentDelayBetweenRipples;
-    GlobalParameters.currentRainbowDeltaPerTick = local_Profile.currentRainbowDeltaPerTick;
-    GlobalParameters.currentRippleLifeSpan = local_Profile.currentRippleLifeSpan;
-    GlobalParameters.currentRippleSpeed = local_Profile.currentRippleSpeed;
-    GlobalParameters.currentDecay = local_Profile.currentDecay;
+    // GlobalParameters.loop_MasterFireRippleEnabled = local_Profile.loop_MasterFireRippleEnabled;
+    // GlobalParameters.currentNumberofColors = local_Profile.currentNumberofColors;
+    // GlobalParameters.currentBehavior  = local_Profile.currentBehavior;
+    // GlobalParameters.currentDelayBetweenRipples = local_Profile.currentDelayBetweenRipples;
+    // GlobalParameters.currentRainbowDeltaPerTick = local_Profile.currentRainbowDeltaPerTick;
+    // GlobalParameters.currentRippleLifeSpan = local_Profile.currentRippleLifeSpan;
+    // GlobalParameters.currentRippleSpeed = local_Profile.currentRippleSpeed;
+    // GlobalParameters.currentDecay = local_Profile.currentDecay;
   }
 return ret_val;
 }

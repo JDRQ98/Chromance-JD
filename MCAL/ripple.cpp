@@ -146,7 +146,7 @@ void Ripple_MainFunction(){
       // Fade all dots to create trails
   for (int segment = 0; segment < NUMBER_OF_SEGMENTS ; segment++){
     for (int led = 0; led < NUMBER_OF_LEDS_PER_SEGMENT; led++) {
-       ledHues[segment][led][1] *= GlobalParameters.currentDecay; //fade brightness
+       ledHues[segment][led][1] *= GlobalParameters.Decay; //fade brightness
     }
   }
 
@@ -173,18 +173,16 @@ void Ripple_KillAllRipples(){
   {
     ripples[i].state = dead;
   }
-  /* allow next burst of ripples */
-  DelayPeriodActive = 0;
 }
 
 
 
 /* elemental FireRipple functions */
 
-bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
   //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
   int tempRipple = *ripple;
-  int hue = fmap(col, 0, GlobalParameters.currentNumberofColors, 0, 0xFFFF);
+  int hue = col; //col is already a hue value
   if(ripples[tempRipple].state == dead){ /* if ripple is not currently active */
     if(nodeConnections[node][dir] >= 0){ /* check if dir and node are valid */
       ripples[tempRipple].start(
@@ -201,6 +199,7 @@ bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned
         nodeLimit
      );
     *ripple = tempRipple+1; /* increase ripple number */
+    if(*ripple >= MAX_NUMBER_OF_RIPPLES) *ripple = 0; /* wrap around if needed */
     return 1; /* ripple was fired */
     } else {
       /* direction is not valid for requested node; ignore request */
@@ -235,7 +234,7 @@ void setSegmentColor(int segment, int col)
     Fires two ripples: one biased towards Right and one biased towards left in the same direction
     dependencies: FireRipple
 */
-bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
+bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
   int currentRipple;
   bool rippleFired = 0;
   currentRipple = *firstRipple;
@@ -283,7 +282,7 @@ bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behav
     only makes sense for starburst nodes and quad nodes!
     dependencies: FireRipple
 */
-bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit)
+bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit)
 {
   int currentRipple;
   bool rippleFired = 0;

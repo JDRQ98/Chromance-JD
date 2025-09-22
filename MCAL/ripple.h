@@ -53,9 +53,9 @@ void Ripple_MainFunction();
 void Ripple_KillAllRipples();
 
 /* functions used by Application Software */
-extern bool FireRipple(int* ripple, int dir, int col, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
-extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
-extern bool FireShard(int *firstRipple, int dir, int color, int node, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+extern bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
+extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+extern bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
 extern void setSegmentColor(int segment, int col);
 
 /* extern the strips for finer control if neede */

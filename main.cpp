@@ -16,17 +16,13 @@
 #include "MCAL/EEP.h"
 #include "Wifi_utilities.h"
 
-#define NUMBER_OF_DIRECTIONS 3
+#define NUMBER_OF_DIRECTIONS 6
 #define NUMBER_OF_STARTING_NODES 3
 #define LED 2 /*onboard LED*/
 
 /* Global Variables used by application */
 int nextRipple = 0;
-int nextDirection = 0;
-int nextColor = 0;
-bool DelayPeriodActive = 0;
-int nextNode = 0;
-unsigned long lastRippleTime = 0;
+
 
 /*Alexa callback*/
 void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode)
@@ -47,62 +43,67 @@ void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, 
   }
 }
 
-  void setup()
-  {
-    Serial.begin(115200);
+void setup()
+{
+  Serial.begin(115200);
 
-    // EEPROM.begin(EEPROM_SIZE);
-    // Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
-    // EEPROM_Read_GlobalParameters();
+  EEPROM.begin(EEPROM_SIZE);
+  // Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
+  //EEPROM_Read_GlobalParameters();
 
-    pinMode(LED, OUTPUT);
-    WiFi_Utilities_init();
-    Strips_init();
-  }
+  pinMode(LED, OUTPUT);
+  WiFi_Utilities_init();
+  Strips_init();
+
+  /*TODO: restore profiles from EEPROM. For now, initialize profile 0 to 'default settings'*/
+  setupDefaultProfileParameters();
+}
   
-  static int OTAendedLoopCalls = 0;
-  void loop()
+static int OTAendedLoopCalls = 0;
+void loop()
+{
+  unsigned long currentTime_ms = millis();
+  int rippleFired_return = 0;
+
+  WiFi_Utilities_loop();
+
+  if (!OTAinProgress)
   {
-    unsigned long benchmark = millis();
-    int rippleFired_return = 0;
+    Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
 
-    if(OTAended)
-    {
-      if(OTAendedLoopCalls%10 == 0U) udp_printf("OTA already ended. Loop execution #%d post-OTA end", OTAendedLoopCalls);
-      OTAendedLoopCalls++;
-    }
+    /* decide if we need to fire a new ripple */
+    if(GlobalParameters.MasterFireRippleEnabled){
+      for(int i = 0; i < NUMBER_OF_PROFILES; i++){ //iterate through all profiles
+        if(!GlobalParameters.RippleProfiles[i].Active) continue; //skip inactive profiles
+        if((currentTime_ms - GlobalParameters.RippleProfiles[i].TimeLastRippleFired_ms) > GlobalParameters.RippleProfiles[i].DelayBetweenRipples_ms){
+          /* delay has passed; we may now begin a new burst*/
+          GlobalParameters.RippleProfiles[i].TimeLastRippleFired_ms = millis(); //update lastRippleTime to reset delay window counter
+          for(int j = 0; j < NUMBER_OF_NODES; j++){ //iterate through all nodes
+            if(!GlobalParameters.RippleProfiles[i].ActiveNodes[j]) continue; //skip inactive nodes
+            
+            for(int direction = 0U; direction < NUMBER_OF_DIRECTIONS; direction++){
 
-    WiFi_Utilities_loop();
+              rippleFired_return |= FireRipple(&nextRipple, 
+                direction, 
+                GlobalParameters.RippleProfiles[i].Colors[GlobalParameters.RippleProfiles[i].CurrentColor],
+                j, /* node */
+                GlobalParameters.RippleProfiles[i].Behavior,
+                GlobalParameters.RippleProfiles[i].RippleLifeSpan, 
+                GlobalParameters.RippleProfiles[i].RippleSpeed,
+                GlobalParameters.RippleProfiles[i].RainbowDeltaPerTick,
+                noPreference,
+                NO_NODE_LIMIT);
+              } /* end direction loop */
+          } /* end node loop */
 
-    if (!OTAinProgress)
-    {
-      Ripple_MainFunction(); /* advance all ripples, show all strips, fade all leds, setPixelColor all leds */
-
-      if ((benchmark - lastRippleTime) > GlobalParameters.currentDelayBetweenRipples)
-      {
-        DelayPeriodActive = 0; /* Delay has passed; we may now begin a new burst*/
-      }
-
-      if (!DelayPeriodActive && GlobalParameters.loop_MasterFireRippleEnabled)
-      {                            /* fire cyclic burst */
-        lastRippleTime = millis(); /* update lastRippleTime to reset delay window counter */
-        DelayPeriodActive = 1;
-        rippleFired_return |= FireRipple_CenterNode(&nextRipple, GlobalParameters.currentDirection, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, noPreference, NO_NODE_LIMIT);
-      }
-
-      if (manualFireRipple)
-      { /* fire manual burst */
-        manualFireRipple = 0;
-        rippleFired_return = 0;
-
-        rippleFired_return |= FireEffect_Random(&nextRipple, nextColor, GlobalParameters.currentBehavior, GlobalParameters.currentRippleLifeSpan, GlobalParameters.currentRippleSpeed, GlobalParameters.currentRainbowDeltaPerTick, NO_NODE_LIMIT);
-      }
-
-      if (rippleFired_return)
-      { /* ripples were fired during this window */
-        nextColor++;
-        nextColor = (nextColor) % GlobalParameters.currentNumberofColors;
-        rippleFired_return = 0;
-      }
-    }
-  }
+          if(rippleFired_return){
+            udp_printf("Ripple fired for profile %d", i);
+            GlobalParameters.RippleProfiles[i].CurrentColor++; //ripple was fired, advance to profile's next color
+            if(GlobalParameters.RippleProfiles[i].CurrentColor >= GlobalParameters.RippleProfiles[i].NumberOfColors) GlobalParameters.RippleProfiles[i].CurrentColor = 0;
+            rippleFired_return = 0; //reset rippleFired_return for next profile
+          }
+        } /* end delay check */
+      } /* end profile loop */
+    } /* end MasterFireRippleEnabled check */
+  } /* end OTAinProgress check */
+}
