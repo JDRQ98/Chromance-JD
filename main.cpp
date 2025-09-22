@@ -47,19 +47,28 @@ void setup()
 {
   Serial.begin(115200);
 
-  EEPROM.begin(EEPROM_SIZE);
-  // Global_NumberOfProfiles_InDFLS = EEPROM_ParseProfiles();
-  //EEPROM_Read_GlobalParameters();
-
   pinMode(LED, OUTPUT);
   WiFi_Utilities_init();
   Strips_init();
+  
+  (void) EEPROM_Init();
 
-  /*TODO: restore profiles from EEPROM. For now, initialize profile 0 to 'default settings'*/
-  setupDefaultProfileParameters();
+  udp_printf("GlobalParameters restored from EEPROM:");
+  udp_printf("MasterFireRippleEnabled: %d", GlobalParameters.MasterFireRippleEnabled);
+  udp_printf("NumberOfActiveProfiles: %d", GlobalParameters.NumberOfActiveProfiles);
+  for(int i = 0; i < GlobalParameters.NumberOfActiveProfiles; i++){
+    udp_printf(" -Profile %d Name: \"%s\"", i, GlobalParameters.RippleProfiles[i].ProfileName);
+    // udp_printf("Profile %d Active: %d", i, GlobalParameters.RippleProfiles[i].Active);
+    // udp_printf("Profile %d DelayBetweenRipples_ms: %d", i, GlobalParameters.RippleProfiles[i].DelayBetweenRipples_ms);
+    // udp_printf("Profile %d RippleLifeSpan: %d", i, GlobalParameters.RippleProfiles[i].RippleLifeSpan);
+    // udp_printf("Profile %d RippleSpeed: %d", i, GlobalParameters.RippleProfiles[i].RippleSpeed);
+    // udp_printf("Profile %d NumberOfColors: %d", i, GlobalParameters.RippleProfiles[i].NumberOfColors);
+    // udp_printf("Profile %d CurrentColor: %d", i, GlobalParameters.RippleProfiles[i].CurrentColor);
+    // udp_printf("Profile %d Behavior: %d", i, GlobalParameters.RippleProfiles[i].Behavior);
+    // udp_printf("Profile %d RainbowDeltaPerTick: %d", i, GlobalParameters.RippleProfiles[i].RainbowDeltaPerTick);
+  }  
 }
   
-static int OTAendedLoopCalls = 0;
 void loop()
 {
   unsigned long currentTime_ms = millis();
