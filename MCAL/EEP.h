@@ -7,4 +7,6 @@ void EEPROM_Init(void);
 void EEPROM_ReadGlobalParameters(void);
 void EEPROM_StoreGlobalParameters(void);
 
+void EEPROM_Clear(void);
+
 #endif

@@ -106,7 +106,6 @@ void loop()
           } /* end node loop */
 
           if(rippleFired_return){
-            udp_printf("Ripple fired for profile %d", i);
             GlobalParameters.RippleProfiles[i].CurrentColor++; //ripple was fired, advance to profile's next color
             if(GlobalParameters.RippleProfiles[i].CurrentColor >= GlobalParameters.RippleProfiles[i].NumberOfColors) GlobalParameters.RippleProfiles[i].CurrentColor = 0;
             rippleFired_return = 0; //reset rippleFired_return for next profile

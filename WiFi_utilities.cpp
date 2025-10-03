@@ -143,7 +143,7 @@ void WiFi_Utilities_loop(void)
 
 /// UDP printf function (supports printf-style formatting)
 size_t udp_printf(const char *format, ...) {
-  char buffer[256]; // Choose an appropriate buffer size.  Be careful of stack overflows!
+  char buffer[1024]; // Choose an appropriate buffer size.  Be careful of stack overflows!
   va_list args;
   va_start(args, format);
   int len = vsnprintf(buffer, sizeof(buffer), format, args);

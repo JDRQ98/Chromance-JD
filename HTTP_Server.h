@@ -15,6 +15,7 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 
 /* DEFINES for variable management */
 #define NUMBER_OF_PROFILES 10U
+#define MAX_PROFILE_NAME_LEN 32U
 
 #define BEHAVIOR_DEFAULT feisty
 
@@ -53,7 +54,7 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 
 typedef struct {
   boolean Active; /* is this profile active? */
-  char* ProfileName; /* name of this profile */
+  char ProfileName[MAX_PROFILE_NAME_LEN]; /* name of this profile */
   boolean ActiveNodes[NUMBER_OF_NODES]; /* for each node, is this profile active on that node? */
   rippleBehavior Behavior;
   signed char Direction;
@@ -83,6 +84,6 @@ extern boolean manualFireRipple;
 
 void HTTP_backend_init(void);
 
-void setupDefaultProfileParameters(void);
+void setupDefaultProfileParameters(RippleProfile_struct* RippleProfile);
 
 #endif /* HTTP_SERVER_H */
