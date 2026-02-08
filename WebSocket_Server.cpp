@@ -40,10 +40,10 @@ void WebSocket_broadcastState(void) {
 
 void WebSocket_notifyRippleFired(int nodeId, int direction, uint32_t color) {
     if (ws.count() > 0) {
-        StaticJsonDocument<256> doc;
+        JsonDocument doc;
         doc["type"] = WS_MSG_RIPPLE_FIRED;
 
-        JsonObject payload = doc.createNestedObject("payload");
+        JsonObject payload = doc["payload"].to<JsonObject>();
         payload["nodeId"] = nodeId;
         payload["direction"] = direction;
         payload["color"] = color;
@@ -83,8 +83,8 @@ static void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 }
 
 static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t len) {
-    // Parse incoming JSON message - use larger buffer for nodeSpecificSettings
-    StaticJsonDocument<2048> doc;
+    // Parse incoming JSON message
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, data, len);
 
     if (error) {
@@ -117,11 +117,11 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
         JsonObject payload = doc["payload"];
         bool success = true;
 
-        if (payload.containsKey("globalSettings")) {
+        if (payload["globalSettings"]) {
             JsonObject settings = payload["globalSettings"];
 
             // Update global parameters from settings
-            if (settings.containsKey("rippleDelay")) {
+            if (settings["rippleDelay"]) {
                 int val = settings["rippleDelay"];
                 if (val >= HTTP_CURRENTDELAYBETWEENRIPPLES_MIN &&
                     val <= HTTP_CURRENTDELAYBETWEENRIPPLES_MAX) {
@@ -129,7 +129,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("rippleLifeSpan")) {
+            if (settings["rippleLifeSpan"]) {
                 unsigned long val = settings["rippleLifeSpan"];
                 if (val >= HTTP_CURRENTRIPPLELIFESPAN_MIN &&
                     val <= HTTP_CURRENTRIPPLELIFESPAN_MAX) {
@@ -137,7 +137,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("rippleSpeed")) {
+            if (settings["rippleSpeed"]) {
                 float val = settings["rippleSpeed"];
                 if (val >= HTTP_CURRENTRIPPLESPEED_MIN &&
                     val <= HTTP_CURRENTRIPPLESPEED_MAX) {
@@ -145,7 +145,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("decayPerTick")) {
+            if (settings["decayPerTick"]) {
                 float val = settings["decayPerTick"];
                 if (val >= HTTP_CURRENTDECAY_MIN &&
                     val <= HTTP_CURRENTDECAY_MAX) {
@@ -153,7 +153,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("hueDeltaTick")) {
+            if (settings["hueDeltaTick"]) {
                 int val = settings["hueDeltaTick"];
                 if (val >= HTTP_CURRENTRAINBOWDELTAPERTICK_MIN &&
                     val <= HTTP_CURRENTRAINBOWDELTAPERTICK_MAX) {
@@ -161,7 +161,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("desiredBehavior")) {
+            if (settings["desiredBehavior"]) {
                 const char* behavior = settings["desiredBehavior"];
                 if (strcmp(behavior, "normal") == 0) {
                     GlobalParameters.currentBehavior = normal;
@@ -174,7 +174,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                 }
             }
 
-            if (settings.containsKey("rippleDirection")) {
+            if (settings["rippleDirection"]) {
                 const char* dir = settings["rippleDirection"];
                 if (strcmp(dir, "allDirections") == 0) {
                     GlobalParameters.currentDirection = ALL_DIRECTIONS;
@@ -186,7 +186,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
             }
 
             // Handle colors array
-            if (settings.containsKey("colors")) {
+            if (settings["colors"]) {
                 JsonArray colors = settings["colors"];
                 GlobalParameters.currentNumberofColors = min((int)colors.size(),
                     (int)HTTP_CURRENTNUMBEROFCOLORS_MAX);
@@ -196,13 +196,13 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
             udp_println("Configuration updated via WebSocket");
         }
 
-        if (payload.containsKey("masterEnabled")) {
+        if (payload["masterEnabled"]) {
             GlobalParameters.loop_MasterFireRippleEnabled = payload["masterEnabled"];
             udp_printf("Master enabled: %d", GlobalParameters.loop_MasterFireRippleEnabled);
         }
 
         // Handle activeNodes array
-        if (payload.containsKey("activeNodes")) {
+        if (payload["activeNodes"]) {
             JsonArray activeNodesArr = payload["activeNodes"];
             ActiveNodesConfig.activeNodeCount = 0;
             
@@ -219,7 +219,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
         }
 
         // Handle nodeSpecificSettings object
-        if (payload.containsKey("nodeSpecificSettings")) {
+        if (payload["nodeSpecificSettings"]) {
             JsonObject nodeSettings = payload["nodeSpecificSettings"];
             
             // First, clear all existing overrides
@@ -234,37 +234,37 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                     JsonObject nodeCfg = kv.value().as<JsonObject>();
                     NodeSettings[nodeId].hasOverride = true;
                     
-                    if (nodeCfg.containsKey("rippleSpeed")) {
+                    if (nodeCfg["rippleSpeed"]) {
                         NodeSettings[nodeId].rippleSpeed = nodeCfg["rippleSpeed"].as<float>();
                     } else {
                         NodeSettings[nodeId].rippleSpeed = GlobalParameters.currentRippleSpeed;
                     }
                     
-                    if (nodeCfg.containsKey("decayPerTick")) {
+                    if (nodeCfg["decayPerTick"]) {
                         NodeSettings[nodeId].decayPerTick = nodeCfg["decayPerTick"].as<float>();
                     } else {
                         NodeSettings[nodeId].decayPerTick = GlobalParameters.currentDecay;
                     }
                     
-                    if (nodeCfg.containsKey("rippleDelay")) {
+                    if (nodeCfg["rippleDelay"]) {
                         NodeSettings[nodeId].rippleDelay = nodeCfg["rippleDelay"].as<short>();
                     } else {
                         NodeSettings[nodeId].rippleDelay = GlobalParameters.currentDelayBetweenRipples;
                     }
                     
-                    if (nodeCfg.containsKey("rippleLifeSpan")) {
+                    if (nodeCfg["rippleLifeSpan"]) {
                         NodeSettings[nodeId].rippleLifeSpan = nodeCfg["rippleLifeSpan"].as<unsigned long>();
                     } else {
                         NodeSettings[nodeId].rippleLifeSpan = GlobalParameters.currentRippleLifeSpan;
                     }
                     
-                    if (nodeCfg.containsKey("hueDeltaTick")) {
+                    if (nodeCfg["hueDeltaTick"]) {
                         NodeSettings[nodeId].hueDeltaTick = nodeCfg["hueDeltaTick"].as<short>();
                     } else {
                         NodeSettings[nodeId].hueDeltaTick = GlobalParameters.currentRainbowDeltaPerTick;
                     }
                     
-                    if (nodeCfg.containsKey("desiredBehavior")) {
+                    if (nodeCfg["desiredBehavior"]) {
                         const char* behavior = nodeCfg["desiredBehavior"];
                         if (strcmp(behavior, "normal") == 0) {
                             NodeSettings[nodeId].behavior = normal;
@@ -277,7 +277,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
                         NodeSettings[nodeId].behavior = GlobalParameters.currentBehavior;
                     }
                     
-                    if (nodeCfg.containsKey("rippleDirection")) {
+                    if (nodeCfg["rippleDirection"]) {
                         const char* dir = nodeCfg["rippleDirection"];
                         if (strcmp(dir, "allDirections") == 0) {
                             NodeSettings[nodeId].direction = ALL_DIRECTIONS;
@@ -307,7 +307,7 @@ static void handleMessage(AsyncWebSocketClient *client, uint8_t *data, size_t le
 }
 
 static void sendAck(AsyncWebSocketClient *client, unsigned long msgId, bool success) {
-    StaticJsonDocument<128> doc;
+    JsonDocument doc;
     doc["type"] = WS_MSG_ACK;
     doc["ackId"] = msgId;
     doc["success"] = success;
@@ -323,10 +323,10 @@ static void sendState(AsyncWebSocketClient *client) {
 }
 
 static String buildStateJson(void) {
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     doc["type"] = WS_MSG_STATE;
 
-    JsonObject payload = doc.createNestedObject("payload");
+    JsonObject payload = doc["payload"].to<JsonObject>();
     payload["masterEnabled"] = GlobalParameters.loop_MasterFireRippleEnabled;
     payload["rippleDelay"] = GlobalParameters.currentDelayBetweenRipples;
     payload["rippleLifeSpan"] = GlobalParameters.currentRippleLifeSpan;
@@ -339,7 +339,7 @@ static String buildStateJson(void) {
     payload["wsClients"] = ws.count();
 
     // Include active nodes array
-    JsonArray activeNodesArr = payload.createNestedArray("activeNodes");
+    JsonArray activeNodesArr = payload["activeNodes"].to<JsonArray>();
     for (int i = 0; i < ActiveNodesConfig.activeNodeCount; i++) {
         activeNodesArr.add(ActiveNodesConfig.activeNodes[i]);
     }

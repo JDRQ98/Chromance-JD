@@ -2,6 +2,7 @@
 #define WEBSOCKET_SERVER_H
 
 #include "Arduino.h"
+#include <WebServer.h>        // Must be included BEFORE ESPAsyncWebServer to avoid HTTP method enum conflicts
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include "HTTP_Server.h"

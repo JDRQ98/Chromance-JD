@@ -19,6 +19,12 @@
 #define ALL_DIRECTIONS -1 /* used as paramater 'dir' for Bulk FireRipple API's */
 #define NO_NODE_LIMIT 0xFFFF /* used as parameter 'nodeLimit' for FireRipple API's*/
 
+// Missing constants required by WebSocket_Server.cpp
+#define CLOCKWISE ALL_DIRECTIONS
+#define COUNTER_CLOCKWISE ALL_DIRECTIONS
+#define normal weaksauce
+#define pastel weaksauce
+
 enum rippleState {
   dead,
   withinNode,  // Ripple isn't drawn as it passes through a node to keep the speed consistent

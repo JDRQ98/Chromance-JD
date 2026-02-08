@@ -4,7 +4,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "WiFi_utilities.h"
-#include "SPIFFS.h"
+#include "LittleFS.h"
 
 PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
     "{\"success\":{\"/lights/%d/state/on\":%s}},"

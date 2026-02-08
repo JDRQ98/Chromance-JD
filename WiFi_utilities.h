@@ -7,12 +7,11 @@
 //#define ELEGANTOTA_DEBUG 1
 
 #include "Arduino.h"
-#include <WebServer.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <ElegantOTA.h>
-#include "SPIFFS.h"
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+#include <WebServer.h>        // Must be included BEFORE ESPAsyncWebServer to avoid HTTP method enum conflicts
+#include <ESPAsyncWebServer.h>
+#include "LittleFS.h"
 #include "Alexa/HueBridge.h"
 
 

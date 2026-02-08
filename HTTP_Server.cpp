@@ -1,5 +1,4 @@
 #include <WiFi.h>
-#include <WebServer.h>
 #include <string>  
 using namespace std;
 
@@ -96,7 +95,7 @@ void handle_UpdateInternalVariables_body(AsyncWebServerRequest* request, uint8_t
     udp_printf("Received the following contents via HTTP Post Request in handle_UpdateInternalVariables:");
     udp_printf("%s", body.c_str());
 
-    DynamicJsonDocument bodyJSON(1024);
+    JsonDocument bodyJSON;
     DeserializationError error = deserializeJson(bodyJSON, body);
     if (error) {
         udp_printf("JSON parse error: %s", error.c_str());
@@ -105,15 +104,15 @@ void handle_UpdateInternalVariables_body(AsyncWebServerRequest* request, uint8_t
     }
 
 
-    short DelayBetweenRipples = bodyJSON.containsKey("currentDelayBetweenRipples") ? bodyJSON["currentDelayBetweenRipples"] : GlobalParameters.currentDelayBetweenRipples;
-    short RainbowDeltaPerTick = bodyJSON.containsKey("currentRainbowDeltaPerTick") ? bodyJSON["currentRainbowDeltaPerTick"] : GlobalParameters.currentRainbowDeltaPerTick;
-    unsigned long RippleLifeSpan = bodyJSON.containsKey("currentRippleLifeSpan") ? bodyJSON["currentRippleLifeSpan"] : GlobalParameters.currentRippleLifeSpan;
-    float RippleSpeed = bodyJSON.containsKey("currentRippleSpeed") ? (float) bodyJSON["currentRippleSpeed"] : GlobalParameters.currentRippleSpeed;
+    short DelayBetweenRipples = bodyJSON["currentDelayBetweenRipples"] | GlobalParameters.currentDelayBetweenRipples;
+    short RainbowDeltaPerTick = bodyJSON["currentRainbowDeltaPerTick"] | GlobalParameters.currentRainbowDeltaPerTick;
+    unsigned long RippleLifeSpan = bodyJSON["currentRippleLifeSpan"] | GlobalParameters.currentRippleLifeSpan;
+    float RippleSpeed = bodyJSON["currentRippleSpeed"] | GlobalParameters.currentRippleSpeed;
     RippleSpeed = RippleSpeed/100; //scaling for proper display on HTML webpage
-    int NumberofColors = bodyJSON.containsKey("currentNumberofColors") ? bodyJSON["currentNumberofColors"] : GlobalParameters.currentNumberofColors;
-    int Behavior = bodyJSON.containsKey("currentBehavior") ? bodyJSON["currentBehavior"] : GlobalParameters.currentBehavior;
-    int Direction = bodyJSON.containsKey("currentDirection") ? bodyJSON["currentDirection"] : GlobalParameters.currentDirection;
-    float Decay = bodyJSON.containsKey("currentDecay") ? (float) bodyJSON["currentDecay"] : GlobalParameters.currentDecay;
+    int NumberofColors = bodyJSON["currentNumberofColors"] | GlobalParameters.currentNumberofColors;
+    int Behavior = bodyJSON["currentBehavior"] | GlobalParameters.currentBehavior;
+    int Direction = bodyJSON["currentDirection"] | GlobalParameters.currentDirection;
+    float Decay = bodyJSON["currentDecay"] | GlobalParameters.currentDecay;
     Decay = Decay/1000; //scaling for proper display on HTML webpage
 
     if(DelayBetweenRipples != GlobalParameters.currentDelayBetweenRipples){
@@ -203,7 +202,7 @@ void handle_UpdateInternalVariables_body(AsyncWebServerRequest* request, uint8_t
 void handle_ManualRipple(AsyncWebServerRequest *request) {
   udp_printf("Received manual ripple request");
   manualFireRipple = 1;
-  request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
+  request->send(LittleFS, "/oneindex.html", String(), false, nullptr);
 }
 
 /* checkbox handling */

@@ -1,4 +1,6 @@
 #include <WiFi_utilities.h>
+#include <WiFiManager.h>      // For WiFi credential management
+#include <ElegantOTA.h>       // For OTA updates
 #include <ESPmDNS.h>
 #include "ASW.h" /* for OTA routines */
 #include "WebSocket_Server.h"
@@ -19,91 +21,91 @@ bool      udpConnected = false;
 
 static void setupWebServer(void){
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/EffectEditor.html", String(), false, nullptr); });
+            { request->send(LittleFS, "/EffectEditor.html", String(), false, nullptr); });
 
   server.on("/EffectEditor.html", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/EffectEditor.html", String(), false, nullptr); });
+            { request->send(LittleFS, "/EffectEditor.html", String(), false, nullptr); });
 
   server.on("/css/index.css", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/css/index.css", String(), false, nullptr); });
+            { request->send(LittleFS, "/css/index.css", String(), false, nullptr); });
 
   server.on("/js/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/main.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/main.js", String(), false, nullptr); });
 
   server.on("/js/colorUtils.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/colorUtils.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/colorUtils.js", String(), false, nullptr); });
 
   server.on("/js/drawVisualizer.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/drawVisualizer.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/drawVisualizer.js", String(), false, nullptr); });
 
   server.on("/js/effectsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/effectsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/effectsManager.js", String(), false, nullptr); });
 
   server.on("/js/globalSettingsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/globalSettingsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/globalSettingsManager.js", String(), false, nullptr); });
 
   server.on("/js/modalManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/modalManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/modalManager.js", String(), false, nullptr); });
 
   server.on("/js/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/nodeManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/nodeManager.js", String(), false, nullptr); });
 
   // New core modules
   server.on("/js/core/eventBus.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/eventBus.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/eventBus.js", String(), false, nullptr); });
 
   server.on("/js/core/stateStore.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/stateStore.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/stateStore.js", String(), false, nullptr); });
 
   server.on("/js/core/wsClient.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/wsClient.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/wsClient.js", String(), false, nullptr); });
 
   // Components
   server.on("/js/components/colorPaletteManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/components/colorPaletteManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/components/colorPaletteManager.js", String(), false, nullptr); });
 
   // Utils
   server.on("/js/utils/settingsUtils.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/utils/settingsUtils.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/utils/settingsUtils.js", String(), false, nullptr); });
 
   // Managers
   server.on("/js/managers/modalManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/modalManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/modalManager.js", String(), false, nullptr); });
 
   server.on("/js/managers/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/nodeManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/nodeManager.js", String(), false, nullptr); });
 
   server.on("/js/managers/effectsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/effectsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/effectsManager.js", String(), false, nullptr); });
 
   server.on("/js/managers/globalSettingsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/globalSettingsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/globalSettingsManager.js", String(), false, nullptr); });
 
   server.on("/js/managers/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/main.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/main.js", String(), false, nullptr); });
 
   server.on("/js/managers/sequenceManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/managers/sequenceManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/managers/sequenceManager.js", String(), false, nullptr); });
 
   // Core - Effect Sequencer
   server.on("/js/core/effectSequencer.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/effectSequencer.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/effectSequencer.js", String(), false, nullptr); });
 
   // Components - Sequence Editor Modal
   server.on("/js/components/sequenceEditorModal.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/components/sequenceEditorModal.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/components/sequenceEditorModal.js", String(), false, nullptr); });
 
   // Core - Topology Data
   server.on("/js/core/topology.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/topology.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/topology.js", String(), false, nullptr); });
 
   // Core - Ripple Simulator
   server.on("/js/core/rippleSimulator.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/rippleSimulator.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/rippleSimulator.js", String(), false, nullptr); });
 
   // Core - Canvas Visualizer
   server.on("/js/core/canvasVisualizer.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/core/canvasVisualizer.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/core/canvasVisualizer.js", String(), false, nullptr); });
 
   HTTP_backend_init();
 }
@@ -135,9 +137,9 @@ void setupWiFi(void)
 {
   setupWifiManager();
 
-  /* Initialize SPIFFS for serving HTML */
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
+  /* Initialize LittleFS for serving HTML */
+  if(!LittleFS.begin(true)){
+    Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
 
