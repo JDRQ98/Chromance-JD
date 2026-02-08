@@ -96,6 +96,7 @@ class Ripple {
       nodeLimit = nLimit;
 
       birthday = millis();
+      lastAdvanceTime = birthday;  // Initialize for time-invariant motion
       pressure = 0;
       state = withinNode;
 
@@ -120,7 +121,11 @@ class Ripple {
     }
 
     void advance(int ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]) {
-      unsigned long age = millis() - birthday;
+      unsigned long currentTime = millis();
+      unsigned long age = currentTime - birthday;
+      unsigned long deltaTime = currentTime - lastAdvanceTime;  // Time since last advance() call
+      lastAdvanceTime = currentTime;
+      
       hue += hueDeltaPerTick;
       if (state == dead)
         return;
@@ -129,11 +134,17 @@ class Ripple {
         Serial.print(pressure);
         Serial.print(", age: ");
         Serial.print(age);
+        Serial.print(", deltaTime: ");
+        Serial.print(deltaTime);
         Serial.print(", lifespan: ");
         Serial.println(lifespan);
 #endif
-      pressure += fmap(float(age), 0.0, float(lifespan), speed, speed/2);  // Ripple slows down as it ages
-      // TODO: Motion of ripple is severely affected by loop speed. Make it time invariant
+      // Time-invariant motion: scale pressure by deltaTime (normalized to ~16ms = 60fps baseline)
+      // At 60fps (16.67ms per frame), deltaTime/16.0 = 1.0 (no change from original behavior)
+      // At 30fps (33.33ms per frame), deltaTime/16.0 = 2.0 (double pressure to compensate)
+      float timeScale = float(deltaTime) / 16.0f;  // Normalize to 60fps baseline
+      float baseSpeed = fmap(float(age), 0.0, float(lifespan), speed, speed/2);  // Ripple slows down as it ages
+      pressure += baseSpeed * timeScale;
 #ifdef DEBUG_PRESSURE
         Serial.print("  Pressure calculation. Ending pressure: ");
         Serial.println(pressure);
@@ -470,6 +481,7 @@ class Ripple {
 
     float pressure;  // When Pressure reaches 1, ripple will move
     unsigned long birthday;  // Used to track age of ripple
+    unsigned long lastAdvanceTime;  // Used for time-invariant motion (delta time calculation)
 
     static byte rippleCount;  // Used to give them unique ID's
     byte rippleId;  // Used to identify this ripple in debug output

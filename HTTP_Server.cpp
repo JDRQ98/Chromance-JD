@@ -32,6 +32,15 @@ boolean manualFireRipple = 0;
 unsigned int currentSelectedProfile = 0;
 unsigned int currentLoadedProfile = -1;
 
+// Active nodes configuration - default to center node (9)
+ActiveNodesConfig_struct ActiveNodesConfig = {
+  .activeNodes = {9},
+  .activeNodeCount = 1
+};
+
+// Per-node settings - all nodes start with no override
+NodeSpecificSettings_struct NodeSettings[MAX_ACTIVE_NODES] = {0};
+
 
 /* HANDLER FUNCTIONS */
 void handle_getInternalVariables(AsyncWebServerRequest *request) {

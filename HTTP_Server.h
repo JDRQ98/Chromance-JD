@@ -67,6 +67,30 @@ typedef struct {
   unsigned char currentNumberofColors;
 } GlobalParameters_struct;
 
+/* Active nodes configuration - which nodes will fire ripples */
+#define MAX_ACTIVE_NODES 19
+typedef struct {
+  unsigned char activeNodes[MAX_ACTIVE_NODES];
+  unsigned char activeNodeCount;
+} ActiveNodesConfig_struct;
+
+/* Per-node settings override structure */
+typedef struct {
+  boolean hasOverride;           // Whether this node has custom settings
+  float rippleSpeed;             // Node-specific speed
+  float decayPerTick;            // Node-specific decay
+  short rippleDelay;             // Node-specific delay
+  unsigned long rippleLifeSpan;  // Node-specific lifespan
+  unsigned char behavior;        // Node-specific behavior
+  signed char direction;         // Node-specific direction
+  short hueDeltaTick;            // Node-specific hue delta
+  unsigned int color;            // Node-specific starting color
+} NodeSpecificSettings_struct;
+
+/* Node-specific settings array - one entry per node */
+extern NodeSpecificSettings_struct NodeSettings[MAX_ACTIVE_NODES];
+extern ActiveNodesConfig_struct ActiveNodesConfig;
+
 typedef enum {
   no_preset = 0,
   default_preset = 1,

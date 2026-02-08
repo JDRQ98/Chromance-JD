@@ -1,6 +1,7 @@
 #include <WiFi_utilities.h>
 #include <ESPmDNS.h>
 #include "ASW.h" /* for OTA routines */
+#include "WebSocket_Server.h"
 
 /* Local variables */
 const char *udpServerIP = UDP_SERVER_IP;
@@ -47,6 +48,63 @@ static void setupWebServer(void){
   server.on("/js/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(SPIFFS, "/js/nodeManager.js", String(), false, nullptr); });
 
+  // New core modules
+  server.on("/js/core/eventBus.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/eventBus.js", String(), false, nullptr); });
+
+  server.on("/js/core/stateStore.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/stateStore.js", String(), false, nullptr); });
+
+  server.on("/js/core/wsClient.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/wsClient.js", String(), false, nullptr); });
+
+  // Components
+  server.on("/js/components/colorPaletteManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/components/colorPaletteManager.js", String(), false, nullptr); });
+
+  // Utils
+  server.on("/js/utils/settingsUtils.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/utils/settingsUtils.js", String(), false, nullptr); });
+
+  // Managers
+  server.on("/js/managers/modalManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/modalManager.js", String(), false, nullptr); });
+
+  server.on("/js/managers/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/nodeManager.js", String(), false, nullptr); });
+
+  server.on("/js/managers/effectsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/effectsManager.js", String(), false, nullptr); });
+
+  server.on("/js/managers/globalSettingsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/globalSettingsManager.js", String(), false, nullptr); });
+
+  server.on("/js/managers/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/main.js", String(), false, nullptr); });
+
+  server.on("/js/managers/sequenceManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/managers/sequenceManager.js", String(), false, nullptr); });
+
+  // Core - Effect Sequencer
+  server.on("/js/core/effectSequencer.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/effectSequencer.js", String(), false, nullptr); });
+
+  // Components - Sequence Editor Modal
+  server.on("/js/components/sequenceEditorModal.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/components/sequenceEditorModal.js", String(), false, nullptr); });
+
+  // Core - Topology Data
+  server.on("/js/core/topology.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/topology.js", String(), false, nullptr); });
+
+  // Core - Ripple Simulator
+  server.on("/js/core/rippleSimulator.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/rippleSimulator.js", String(), false, nullptr); });
+
+  // Core - Canvas Visualizer
+  server.on("/js/core/canvasVisualizer.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/js/core/canvasVisualizer.js", String(), false, nullptr); });
+
   HTTP_backend_init();
 }
 
@@ -84,6 +142,7 @@ void setupWiFi(void)
   }
 
   setupWebServer();
+  WebSocket_init(&server);
 }
 
 void setupOTA(void)
@@ -139,6 +198,7 @@ void WiFi_Utilities_loop(void)
 {
   ElegantOTA.loop();
   hueBridge.handle();
+  WebSocket_loop();
 }
 
 /// UDP printf function (supports printf-style formatting)
