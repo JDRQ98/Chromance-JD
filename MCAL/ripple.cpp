@@ -137,7 +137,7 @@ void SetPixelColor_AllLEDs(){
 void Strips_init(){
    for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
     strips[i].begin();
-    strips[i].setBrightness(128U);  // If your PSU sucks, use this to limit the current
+    strips[i].setBrightness(GlobalParameters.Brightness);
     strips[i].show();
   }
 }

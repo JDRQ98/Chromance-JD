@@ -4,6 +4,7 @@
 #include "Preferences.h"
 
 #define EEPROM_DEBUGGING true
+#define EEPROM_KEY "GlobalConfig"
 
 Preferences preferencesObject;
 
@@ -11,6 +12,8 @@ Preferences preferencesObject;
 #define RO_MODE true
 
 static bool EEPROM_Initialized = false;
+static bool EEPROM_Dirty = false;
+static unsigned long EEPROM_DirtyTimestamp = 0;
 
 void EEPROM_Init(void)
 {
@@ -56,7 +59,7 @@ void EEPROM_Init(void)
 #endif
       // Store the run-time variables into the Preferences namespace
       
-      bytesStored = preferencesObject.putBytes("GlobalConfig", &GlobalParameters, sizeof(GlobalParameters));
+      bytesStored = preferencesObject.putBytes(EEPROM_KEY, &GlobalParameters, sizeof(GlobalParameters));
 #if EEPROM_DEBUGGING
       udp_printf("GlobalParameters stored %u bytes", bytesStored);
 #endif
@@ -80,7 +83,7 @@ void EEPROM_Init(void)
 #endif
       // This is not our first-time run so just retrieve the stored values from
       //  the "preferencesObject" namespace into the run-time variables.
-      bytesRetrieved = preferencesObject.getBytes("GlobalConfig", &GlobalParameters, sizeof(GlobalParameters));
+      bytesRetrieved = preferencesObject.getBytes(EEPROM_KEY, &GlobalParameters, sizeof(GlobalParameters));
 #if EEPROM_DEBUGGING
       udp_printf("GlobalParameters retrieved %u bytes", bytesRetrieved);
 #endif
@@ -130,7 +133,7 @@ void EEPROM_ReadGlobalParameters(void)
     return;
   }
   preferencesObject.begin("chromance", RO_MODE); // Open our namespace in RO mode.
-  preferencesObject.getBytes("GlobalParameters", &GlobalParameters, sizeof(GlobalParameters));
+  preferencesObject.getBytes(EEPROM_KEY, &GlobalParameters, sizeof(GlobalParameters));
   preferencesObject.end(); // Close our preferences namespace.
   return;
 }
@@ -145,9 +148,30 @@ void EEPROM_StoreGlobalParameters(void)
     return;
   }
   preferencesObject.begin("chromance", RW_MODE); // Open our namespace in RW mode.
-  preferencesObject.putBytes("GlobalParameters", &GlobalParameters, sizeof(GlobalParameters));
+  preferencesObject.putBytes(EEPROM_KEY, &GlobalParameters, sizeof(GlobalParameters));
   preferencesObject.end(); // Close our preferences namespace.
   return;
+}
+
+void EEPROM_MarkDirty(void)
+{
+  EEPROM_Dirty = true;
+  EEPROM_DirtyTimestamp = millis();
+#if EEPROM_DEBUGGING
+  udp_printf("EEPROM marked dirty, will save after %u ms cooldown", EEPROM_SAVE_COOLDOWN_MS);
+#endif
+}
+
+void EEPROM_DebouncedSave(void)
+{
+  if (EEPROM_Dirty && (millis() - EEPROM_DirtyTimestamp >= EEPROM_SAVE_COOLDOWN_MS))
+  {
+    EEPROM_Dirty = false;
+    EEPROM_StoreGlobalParameters();
+#if EEPROM_DEBUGGING
+    udp_printf("EEPROM debounced save completed");
+#endif
+  }
 }
 
 void EEPROM_Clear(void)

@@ -51,6 +51,10 @@ PROGMEM const char FAUXMO_TCP_STATE_RESPONSE[] = "["
 #define RAINBOWDELTAPERPERIOD_DEFAULT   0U
 #define RAINBOWDELTAPERPERIOD_MAX       60000U
 
+#define BRIGHTNESS_MIN       0U
+#define BRIGHTNESS_DEFAULT   128U
+#define BRIGHTNESS_MAX       255U
+
 
 typedef struct {
   boolean Active; /* is this profile active? */
@@ -73,6 +77,7 @@ typedef struct {
 typedef struct {
   boolean MasterFireRippleEnabled;
   float Decay; /* decay per tick, global for now TODO: make decay a ripple/profile property */
+  unsigned char Brightness; /* LED brightness 0-255 */
   RippleProfile_struct RippleProfiles[NUMBER_OF_PROFILES]; /* ripple profiles stored by ESP32 */
   unsigned int NumberOfActiveProfiles;
 } GlobalParameters_struct;

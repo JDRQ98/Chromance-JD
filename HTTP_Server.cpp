@@ -16,6 +16,58 @@ const long timeout = 2000;
 // Auxiliar variables to store the current output state
 GlobalParameters_struct GlobalParameters;
 
+/* Convert an RGB hex value (0xRRGGBB) to a 16-bit HSV hue (0-65535).
+   Saturation and value are assumed to be max (pure color). */
+static unsigned int rgbHexToHue16(unsigned int rgb) {
+  uint8_t r = (rgb >> 16) & 0xFF;
+  uint8_t g = (rgb >> 8) & 0xFF;
+  uint8_t b = rgb & 0xFF;
+
+  uint8_t maxC = max(r, max(g, b));
+  uint8_t minC = min(r, min(g, b));
+
+  if (maxC == minC) return 0; // achromatic (gray/white/black) → red hue
+
+  float hue;
+  float delta = maxC - minC;
+
+  if (maxC == r) {
+    hue = (float)(g - b) / delta;
+    if (hue < 0) hue += 6.0f;
+  } else if (maxC == g) {
+    hue = 2.0f + (float)(b - r) / delta;
+  } else {
+    hue = 4.0f + (float)(r - g) / delta;
+  }
+
+  return (unsigned int)(hue * 65536.0f / 6.0f); // scale 0-6 → 0-65535
+}
+
+/* Convert a 16-bit HSV hue (0-65535) back to RGB hex (0xRRGGBB).
+   Uses full saturation and value. */
+static unsigned int hue16ToRgbHex(unsigned int hue16) {
+  // Use Adafruit NeoPixel's ColorHSV which returns a packed GRB uint32_t
+  // but we need an external strip reference — use a simpler approach instead.
+  // HSV to RGB with S=255, V=255:
+  uint8_t region = hue16 / 10923; // 65536/6 ≈ 10922.67
+  uint16_t remainder = (hue16 - (region * 10923)) * 6; // scale remainder to 0-65535
+
+  uint8_t q = 255 - ((255 * remainder) >> 16); // falling
+  uint8_t t = 255 - ((255 * (65535 - remainder)) >> 16); // rising
+
+  uint8_t r, g, b;
+  switch (region % 6) {
+    case 0:  r = 255; g = t;   b = 0;   break;
+    case 1:  r = q;   g = 255; b = 0;   break;
+    case 2:  r = 0;   g = 255; b = t;   break;
+    case 3:  r = 0;   g = q;   b = 255; break;
+    case 4:  r = t;   g = 0;   b = 255; break;
+    default: r = 255; g = 0;   b = q;   break;
+  }
+
+  return ((unsigned int)r << 16) | ((unsigned int)g << 8) | b;
+}
+
 
 
 boolean manualFireRipple = 0;
@@ -36,13 +88,13 @@ void setupDefaultProfileParameters(RippleProfile_struct* RippleProfile)
   RippleProfile->NumberOfColors = NUMBEROFCOLORS_DEFAULT;
   for (int i = 0; i < RippleProfile->NumberOfColors; i++)
   {
-    RippleProfile->Colors[0] = 0xFF0000; /* red */
-    RippleProfile->Colors[1] = 0xFF7F00; /* orange */
-    RippleProfile->Colors[2] = 0xFFFF00; /* yellow */
-    RippleProfile->Colors[3] = 0x00FF00; /* green */
-    RippleProfile->Colors[4] = 0x0000FF; /* blue */
-    RippleProfile->Colors[5] = 0x4B0082; /* indigo */
-    RippleProfile->Colors[6] = 0x8B00FF; /* violet */
+    RippleProfile->Colors[0] = 0;      /* red (hue 0°) */
+    RippleProfile->Colors[1] = 5461;   /* orange (hue ~30°) */
+    RippleProfile->Colors[2] = 10922;  /* yellow (hue ~60°) */
+    RippleProfile->Colors[3] = 21845;  /* green (hue ~120°) */
+    RippleProfile->Colors[4] = 43690;  /* blue (hue ~240°) */
+    RippleProfile->Colors[5] = 48497;  /* indigo (hue ~266°) */
+    RippleProfile->Colors[6] = 51425;  /* violet (hue ~282°) */
 
   }
   RippleProfile->CurrentColor = 0;
@@ -82,8 +134,9 @@ void handle_getCurrentProfiles(AsyncWebServerRequest *request) {
     response += "    \"NumberOfColors\": " + String(GlobalParameters.RippleProfiles[i].NumberOfColors) + ",\n";
     response += "    \"Colors\": [";
     for(int k = 0; k < GlobalParameters.RippleProfiles[i].NumberOfColors; k++){
-      char colorString[8];
-      sprintf(colorString, "\"#%06X\"", GlobalParameters.RippleProfiles[i].Colors[k]);
+      char colorString[12];
+      unsigned int rgbColor = hue16ToRgbHex(GlobalParameters.RippleProfiles[i].Colors[k]);
+      sprintf(colorString, "\"#%06X\"", rgbColor);
       response += String(colorString);
       if(k < GlobalParameters.RippleProfiles[i].NumberOfColors - 1){
         response += ", ";
@@ -207,7 +260,8 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
         JsonArray colorsArray = bodyJSON["Colors"].as<JsonArray>();
         for (int i = 0; i < NumberOfColors && i < 16; i++) {
             String colorStr = colorsArray[i] | String("#000000");
-            Colors[i] = (unsigned int) strtol(colorStr.c_str() + 1, NULL, 16); // convert hex string to unsigned int
+            unsigned int rgbValue = (unsigned int) strtol(colorStr.c_str() + 1, NULL, 16);
+            Colors[i] = rgbHexToHue16(rgbValue); // convert RGB hex to HSV hue for ripple engine
         }
     } else {
         for (int i = 0; i < profile->NumberOfColors; i++) {
@@ -273,9 +327,9 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
       if(profile->Colors[i] != Colors[i]){
         profile->Colors[i] = Colors[i];
         colorsChanged = true;
-        udp_printf(" - Updated Colors[%d] to #%06X", i, profile->Colors[i]);
+        udp_printf(" - Updated Colors[%d] to hue %u (RGB #%06X)", i, profile->Colors[i], hue16ToRgbHex(profile->Colors[i]));
       } else{
-        udp_printf(" - Colors[%d] remains #%06X", i, profile->Colors[i]);
+        udp_printf(" - Colors[%d] remains hue %u (RGB #%06X)", i, profile->Colors[i], hue16ToRgbHex(profile->Colors[i]));
       }
     }
     if(colorsChanged){
@@ -298,6 +352,7 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
       }
     }
 
+    EEPROM_MarkDirty(); // schedule debounced save to persist profile changes
     request->send_P(200, "application/json", "{}");
 }
 
@@ -334,6 +389,7 @@ void handle_UpdateGlobalParameters(AsyncWebServerRequest* request, uint8_t* data
         udp_printf(" - Decay remains %.3f", GlobalParameters.Decay);
     }
 
+    EEPROM_MarkDirty(); // schedule debounced save to persist global parameter changes
     request->send_P(200, "application/json", "{}");
 }
 

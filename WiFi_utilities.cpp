@@ -9,8 +9,6 @@ AsyncWebServer server(80);
 
 HueBridge hueBridge;
 
-static unsigned long ota_progress_millis = 0;
-
 WiFiUDP udp;
 IPAddress udpServer;
 bool      udpConnected = false;
@@ -105,12 +103,13 @@ void setupWiFi(void)
 
 void setupOTA(void)
 {
+  /* ElegantOTA - OTA via browser at /update and PlatformIO custom upload script */
   ElegantOTA.setAutoReboot(true);
-  ElegantOTA.begin(&server); // Start ElegantOTA
+  ElegantOTA.begin(&server);
   ElegantOTA.onStart(onOTAStart);
   ElegantOTA.onProgress(onOTAProgress);
   ElegantOTA.onEnd(onOTAEnd);
-  server.begin(); 
+  server.begin();
 }
 
 void setupUDP(void)

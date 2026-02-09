@@ -75,6 +75,7 @@ void loop()
   int rippleFired_return = 0;
 
   WiFi_Utilities_loop();
+  EEPROM_DebouncedSave(); // persist EEPROM if dirty and cooldown has elapsed
 
   if (!OTAinProgress)
   {

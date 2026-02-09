@@ -96,6 +96,7 @@ class Ripple {
       nodeLimit = nLimit;
 
       birthday = millis();
+      lastAdvanceTime = birthday;
       pressure = 0;
       state = withinNode;
 
@@ -120,10 +121,14 @@ class Ripple {
     }
 
     void advance(int ledColors[NUMBER_OF_SEGMENTS][NUMBER_OF_LEDS_PER_SEGMENT][2]) {
-      unsigned long age = millis() - birthday;
-      hue += hueDeltaPerTick;
       if (state == dead)
         return;
+      unsigned long currentTime = millis();
+      unsigned long age = currentTime - birthday;
+      float deltaTime = (float)(currentTime - lastAdvanceTime);
+      lastAdvanceTime = currentTime;
+      float timeScale = deltaTime / 16.0f; // normalize to ~60fps baseline
+      hue += (unsigned short)(hueDeltaPerTick * timeScale);
 #ifdef DEBUG_PRESSURE
         Serial.print("  Pressure calculation. Starting pressure: ");
         Serial.print(pressure);
@@ -132,8 +137,7 @@ class Ripple {
         Serial.print(", lifespan: ");
         Serial.println(lifespan);
 #endif
-      pressure += fmap(float(age), 0.0, float(lifespan), speed, speed/2);  // Ripple slows down as it ages
-      // TODO: Motion of ripple is severely affected by loop speed. Make it time invariant
+      pressure += fmap(float(age), 0.0, float(lifespan), speed, speed/2) * timeScale;
 #ifdef DEBUG_PRESSURE
         Serial.print("  Pressure calculation. Ending pressure: ");
         Serial.println(pressure);
@@ -470,6 +474,7 @@ class Ripple {
 
     float pressure;  // When Pressure reaches 1, ripple will move
     unsigned long birthday;  // Used to track age of ripple
+    unsigned long lastAdvanceTime;  // Used for time-invariant pressure calculation
 
     static byte rippleCount;  // Used to give them unique ID's
     byte rippleId;  // Used to identify this ripple in debug output
