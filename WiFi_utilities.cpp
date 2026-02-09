@@ -17,35 +17,52 @@ bool      udpConnected = false;
 
 
 static void setupWebServer(void){
+  /* Landing page */
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/EffectEditor.html", String(), false, nullptr); });
+            { request->send(LittleFS, "/index.html", String(), false, nullptr); });
 
-  server.on("/EffectEditor.html", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/EffectEditor.html", String(), false, nullptr); });
+  server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/index.html", String(), false, nullptr); });
 
+  /* Profile editor page */
+  server.on("/ProfileEditor.html", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/ProfileEditor.html", String(), false, nullptr); });
+
+  /* CSS */
   server.on("/css/index.css", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/css/index.css", String(), false, nullptr); });
+            { request->send(LittleFS, "/css/index.css", String(), false, nullptr); });
 
+  server.on("/css/landing.css", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/css/landing.css", String(), false, nullptr); });
+
+  /* JS - shared modules */
   server.on("/js/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/main.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/main.js", String(), false, nullptr); });
 
   server.on("/js/colorUtils.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/colorUtils.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/colorUtils.js", String(), false, nullptr); });
 
   server.on("/js/drawVisualizer.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/drawVisualizer.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/drawVisualizer.js", String(), false, nullptr); });
 
   server.on("/js/effectsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/effectsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/effectsManager.js", String(), false, nullptr); });
 
   server.on("/js/globalSettingsManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/globalSettingsManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/globalSettingsManager.js", String(), false, nullptr); });
 
   server.on("/js/modalManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/modalManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/modalManager.js", String(), false, nullptr); });
 
   server.on("/js/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/js/nodeManager.js", String(), false, nullptr); });
+            { request->send(LittleFS, "/js/nodeManager.js", String(), false, nullptr); });
+
+  /* JS - landing page */
+  server.on("/js/landing.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/js/landing.js", String(), false, nullptr); });
+
+  server.on("/js/landing-no-cors.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/js/landing-no-cors.js", String(), false, nullptr); });
 
   HTTP_backend_init();
 }
@@ -77,9 +94,9 @@ void setupWiFi(void)
 {
   setupWifiManager();
 
-  /* Initialize SPIFFS for serving HTML */
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
+  /* Initialize LittleFS for serving HTML */
+  if(!LittleFS.begin(true)){
+    Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
 

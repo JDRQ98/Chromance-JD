@@ -4,7 +4,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "WiFi_utilities.h"
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include "MCAL/mapping.h"
 #include "MCAL/ripple.h"
 

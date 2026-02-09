@@ -3,7 +3,7 @@
 bool OTAinProgress = 0;
 bool OTAended = 0;
 
-bool FireEffect_Random(int* firstRipple, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
+bool FireEffect_Random(int* firstRipple, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
   int currentRipple;
   bool rippleFired = 0;
   int dir;
@@ -18,17 +18,14 @@ bool FireEffect_Random(int* firstRipple, int color, rippleBehavior behavior, uns
     rippleFired |= FireEffect_CenterNode_QuadShard(&currentRipple, random(6), color, behavior, lifespan, speed, hDelta, nodeLimit);
     break;
   case 2: /* fire Doubleripple in all directions from center node */
-    rippleFired |= FireDoubleRipple(&currentRipple, 0, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireDoubleRipple(&currentRipple, 1, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireDoubleRipple(&currentRipple, 2, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireDoubleRipple(&currentRipple, 3, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireDoubleRipple(&currentRipple, 4, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireDoubleRipple(&currentRipple, 5, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
+    for(int d = 0; d < 6; d++){
+      rippleFired |= FireDoubleRipple(&currentRipple, d, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
+    }
     break;
   case 3: /* fire shard in random direction and also in its opposite direction */
     dir = random(6); /* pick random direction */
-    rippleFired |= FireShard(&currentRipple, dir, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-    rippleFired |= FireShard(&currentRipple, (dir+3)%6, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
+    rippleFired |= FireShard(&currentRipple, dir, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
+    rippleFired |= FireShard(&currentRipple, (dir+3)%6, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
     break;
   default:
     // code block
@@ -42,146 +39,80 @@ bool FireEffect_Random(int* firstRipple, int color, rippleBehavior behavior, uns
 
 /* bulk FireRipple functions */
 
-bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
+/* Direction arrays for each node type */
+static const int dirsOddCube[] = {1, 3, 5};
+static const int dirsPairCube[] = {0, 2, 4};
+static const int dirsAll6[] = {0, 1, 2, 3, 4, 5};
+
+/*
+ * Generic helper: fires ripples from a set of nodes.
+ *   nodes[]    – array of node IDs to fire from
+ *   numNodes   – length of nodes[]
+ *   dirs[]     – array of directions to use when dir < 0 (all-directions mode)
+ *   numDirs    – length of dirs[]
+ *   dir        – if >= 0, fire only in this direction; if < 0, fire in all dirs[]
+ */
+static bool FireRipple_FromNodes(int* firstRipple, const int nodes[], int numNodes,
+                                 const int dirs[], int numDirs,
+                                 int dir, int color, byte behavior,
+                                 unsigned long lifespan, float speed, unsigned short hDelta,
+                                 directionBias bias, unsigned short nodeLimit){
+  int currentRipple = *firstRipple;
   bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  for(int i = 0; i < numberOfCubeOddNodes; i++){
-    if( dir < 0 ){ /* fire in all directions */
-      rippleFired |= FireRipple(&currentRipple, 1, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 3, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 5, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
+  for(int i = 0; i < numNodes; i++){
+    if(dir < 0){ /* fire in all directions */
+      for(int d = 0; d < numDirs; d++){
+        rippleFired |= FireRipple(&currentRipple, dirs[d], color, nodes[i], (rippleBehavior)behavior, lifespan, speed, hDelta, bias, nodeLimit);
+        currentRipple = currentRipple % MAX_NUMBER_OF_RIPPLES;
+      }
     } else { /* fire only in one direction */
-      rippleFired |= FireRipple(&currentRipple, dir, color, cubeOddNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
+      rippleFired |= FireRipple(&currentRipple, dir, color, nodes[i], (rippleBehavior)behavior, lifespan, speed, hDelta, bias, nodeLimit);
+      currentRipple = currentRipple % MAX_NUMBER_OF_RIPPLES;
     }
   }
   *firstRipple = currentRipple;
   return rippleFired;
 }
 
-bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
+bool FireRipple_AllOddCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  return FireRipple_FromNodes(firstRipple, cubeOddNodes, numberOfCubeOddNodes,
+                              dirsOddCube, 3, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
+}
+
+bool FireRipple_AllPairCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  return FireRipple_FromNodes(firstRipple, cubePairNodes, numberOfCubePairNodes,
+                              dirsPairCube, 3, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
+}
+
+bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  int currentRipple = *firstRipple;
   bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  for(int i = 0; i < numberOfCubePairNodes; i++){
-    if( dir < 0 ){ /* fire in all directions */
-      rippleFired |= FireRipple(&currentRipple, 0, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 2, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 4, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    } else { /* fire only in one direction */
-      rippleFired |= FireRipple(&currentRipple, dir, color, cubePairNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    }
-  }
+  rippleFired |= FireRipple_AllPairCubeNodes(&currentRipple, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
+  rippleFired |= FireRipple_AllOddCubeNodes(&currentRipple, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
   *firstRipple = currentRipple;
   return rippleFired;
 }
 
-bool FireRipple_AllCubeNodes(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
-  bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  if( dir < 0 ){ /* fire in all directions */
-    rippleFired = FireRipple_AllPairCubeNodes(&currentRipple, -1, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    rippleFired = FireRipple_AllOddCubeNodes(&currentRipple, -1, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-  } else { /* fire only in one direction */
-    rippleFired = FireRipple_AllPairCubeNodes(&currentRipple, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    rippleFired = FireRipple_AllOddCubeNodes(&currentRipple, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-  }
-  *firstRipple = currentRipple;
-  return rippleFired;
+bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  return FireRipple_FromNodes(firstRipple, QuadNodes, numberOfQuadNodes,
+                              dirsAll6, 6, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
 }
 
-bool FireRipple_AllQuadNodes(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
-  bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  for(int i = 0; i < numberOfQuadNodes; i++){
-    if( dir < 0 ){ /* fire in all directions */
-      rippleFired |= FireRipple(&currentRipple, 0, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 1, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 2, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 3, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 4, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 5, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    } else { /* fire only in one direction */
-      rippleFired |= FireRipple(&currentRipple, dir, color, QuadNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    }
-  }
-  *firstRipple = currentRipple;
-  return rippleFired;
+bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  return FireRipple_FromNodes(firstRipple, borderNodes, numberOfBorderNodes,
+                              dirsAll6, 6, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
 }
 
-bool FireRipple_AllBorderNodes(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
-  bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  for(int i = 0; i < numberOfBorderNodes; i++){
-    if( dir < 0 ){ /* fire in all directions */
-      rippleFired |= FireRipple(&currentRipple, 0, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 1, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 2, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 3, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 4, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-      rippleFired |= FireRipple(&currentRipple, 5, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    } else { /* fire only in one direction */
-      rippleFired |= FireRipple(&currentRipple, dir, color, borderNodes[i], behavior, lifespan, speed, hDelta, bias, nodeLimit);
-      currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    }
-  }
-  *firstRipple = currentRipple;
-  return rippleFired;
-}
-
-bool FireRipple_CenterNode(int* firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
-  int currentRipple;
-  bool rippleFired = 0;
-  currentRipple = *firstRipple;
-  if( dir < 0 ){ /* fire in all directions */
-    rippleFired |= FireRipple(&currentRipple, 0, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 1, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 2, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 3, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 4, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 5, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-  } else { /* fire only in one direction */
-    rippleFired |= FireRipple(&currentRipple, dir, color, starburstNode, behavior, lifespan, speed, hDelta, bias, nodeLimit);
-    currentRipple = (currentRipple)%MAX_NUMBER_OF_RIPPLES;
-  }
-  *firstRipple = currentRipple;
-  return rippleFired;
+bool FireRipple_CenterNode(int* firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+  int centerNodeArr[] = { starburstNode };
+  return FireRipple_FromNodes(firstRipple, centerNodeArr, 1,
+                              dirsAll6, 6, dir, color, behavior, lifespan, speed, hDelta, bias, nodeLimit);
 }
 
 
 
 /* special effects */
-bool FireEffect_Star(int* firstRipple, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta){
+bool FireEffect_Star(int* firstRipple, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta){
   int currentRipple;
   bool rippleFired = 0;
   currentRipple = *firstRipple;
@@ -191,15 +122,15 @@ bool FireEffect_Star(int* firstRipple, int color, rippleBehavior behavior, unsig
   return rippleFired;
 }
 
-bool FireEffect_CenterNode_QuadShard(int *firstRipple, int dir, int color, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
+bool FireEffect_CenterNode_QuadShard(int *firstRipple, int dir, int color, byte behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
   int currentRipple;
   bool rippleFired = 0;
   currentRipple = *firstRipple;
   
-  rippleFired |= FireShard(&currentRipple, dir, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-  rippleFired |= FireShard(&currentRipple, (dir+1)%6, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-  rippleFired |= FireShard(&currentRipple, (dir+3)%6, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
-  rippleFired |= FireShard(&currentRipple, (dir+4)%6, color, starburstNode, behavior, lifespan, speed, hDelta, nodeLimit);
+  rippleFired |= FireShard(&currentRipple, dir, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
+  rippleFired |= FireShard(&currentRipple, (dir+1)%6, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
+  rippleFired |= FireShard(&currentRipple, (dir+3)%6, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
+  rippleFired |= FireShard(&currentRipple, (dir+4)%6, color, starburstNode, (rippleBehavior)behavior, lifespan, speed, hDelta, nodeLimit);
   
   *firstRipple = currentRipple;
   return rippleFired;

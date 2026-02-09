@@ -92,13 +92,14 @@ void handle_getCurrentProfiles(AsyncWebServerRequest *request) {
     response += "],\n";
     response += "    \"delayBetweenRipples_ms\": " + String(GlobalParameters.RippleProfiles[i].DelayBetweenRipples_ms) + "\n";
 
-    response += "  }]";
+    response += "  }";
     if(i < GlobalParameters.NumberOfActiveProfiles - 1){
       response += ",\n";
     } else {
       response += "\n";
     }
   }
+  response += "]\n";
   response += "}\n";
 
   udp_printf("handle_getCurrentProfiles response: %s", response.c_str());
@@ -188,20 +189,20 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
     if (bodyJSON.containsKey("ActiveNodes")) {
         JsonArray nodesArray = bodyJSON["ActiveNodes"].as<JsonArray>();
         for (int i = 0; i < NUMBER_OF_NODES; i++) {
-            ActiveNodes[i] = nodesArray[i] | profile->ActiveNodes[i];
+            ActiveNodes[i] = nodesArray[i].as<int>(); // direct assignment, don't use | fallback
         }
     } else {
         for (int i = 0; i < NUMBER_OF_NODES; i++) {
             ActiveNodes[i] = profile->ActiveNodes[i];
         }
     }
-    rippleBehavior Behavior = bodyJSON["Behavior"] ? static_cast<rippleBehavior>(bodyJSON["Behavior"].as<int>()) : profile->Behavior;
-    signed char Direction = bodyJSON["Direction"] ? bodyJSON["Direction"] : profile->Direction;
-    unsigned long RippleLifeSpan = bodyJSON["RippleLifeSpan"] ? bodyJSON["RippleLifeSpan"] : profile->RippleLifeSpan;
-    float RippleSpeed = bodyJSON["RippleSpeed"] ? bodyJSON["RippleSpeed"] : profile->RippleSpeed;
-    short RainbowDeltaPerTick = bodyJSON["RainbowDeltaPerTick"] ? bodyJSON["RainbowDeltaPerTick"] : profile->RainbowDeltaPerTick;
+    rippleBehavior Behavior = bodyJSON.containsKey("Behavior") ? static_cast<rippleBehavior>(bodyJSON["Behavior"].as<int>()) : profile->Behavior;
+    signed char Direction = bodyJSON.containsKey("Direction") ? bodyJSON["Direction"].as<signed char>() : profile->Direction;
+    unsigned long RippleLifeSpan = bodyJSON.containsKey("RippleLifeSpan") ? bodyJSON["RippleLifeSpan"].as<unsigned long>() : profile->RippleLifeSpan;
+    float RippleSpeed = bodyJSON.containsKey("RippleSpeed") ? bodyJSON["RippleSpeed"].as<float>() : profile->RippleSpeed;
+    short RainbowDeltaPerTick = bodyJSON.containsKey("RainbowDeltaPerTick") ? bodyJSON["RainbowDeltaPerTick"].as<short>() : profile->RainbowDeltaPerTick;
     unsigned int Colors[16];
-    unsigned int NumberOfColors = bodyJSON["NumberOfColors"] ? bodyJSON["NumberOfColors"] : profile->NumberOfColors;
+    unsigned int NumberOfColors = bodyJSON.containsKey("NumberOfColors") ? bodyJSON["NumberOfColors"].as<unsigned int>() : profile->NumberOfColors;
     if (bodyJSON.containsKey("Colors")) {
         JsonArray colorsArray = bodyJSON["Colors"].as<JsonArray>();
         for (int i = 0; i < NumberOfColors && i < 16; i++) {
@@ -213,7 +214,7 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
             Colors[i] = profile->Colors[i];
         }
     }
-    short DelayBetweenRipples_ms = bodyJSON["DelayBetweenRipples_ms"] ? bodyJSON["DelayBetweenRipples_ms"] : profile->DelayBetweenRipples_ms;
+    short DelayBetweenRipples_ms = bodyJSON.containsKey("DelayBetweenRipples_ms") ? bodyJSON["DelayBetweenRipples_ms"].as<short>() : profile->DelayBetweenRipples_ms;
     // Now apply the updates to the profile only if parameters are new and valid
     udp_printf(" - Finished extraction from JSON, applying parameter updates to profile at index %d", ProfileIndex);
     if(strcmp(profile->ProfileName, ProfileName) != 0){
@@ -260,8 +261,10 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
     } else{
       udp_printf(" - RainbowDeltaPerTick remains %d", profile->RainbowDeltaPerTick);
     }
+    boolean colorsChanged = false;
     if(profile->NumberOfColors != NumberOfColors && NumberOfColors > 0 && NumberOfColors <= 16){
       profile->NumberOfColors = NumberOfColors;
+      colorsChanged = true;
       udp_printf(" - Updated NumberOfColors to %d", profile->NumberOfColors);
     } else{
       udp_printf(" - NumberOfColors remains %d", profile->NumberOfColors);
@@ -269,16 +272,30 @@ void handle_UpdateProfile(AsyncWebServerRequest* request, uint8_t* data, size_t 
     for(int i = 0; i < profile->NumberOfColors; i++){
       if(profile->Colors[i] != Colors[i]){
         profile->Colors[i] = Colors[i];
+        colorsChanged = true;
         udp_printf(" - Updated Colors[%d] to #%06X", i, profile->Colors[i]);
       } else{
         udp_printf(" - Colors[%d] remains #%06X", i, profile->Colors[i]);
       }
+    }
+    if(colorsChanged){
+      profile->CurrentColor = 0;
+      udp_printf(" - Reset CurrentColor to 0");
     }
     if(profile->DelayBetweenRipples_ms != DelayBetweenRipples_ms){
       profile->DelayBetweenRipples_ms = DelayBetweenRipples_ms;
       udp_printf(" - Updated DelayBetweenRipples_ms to %d", profile->DelayBetweenRipples_ms);
     } else{
       udp_printf(" - DelayBetweenRipples_ms remains %d", profile->DelayBetweenRipples_ms);
+    }
+    if (bodyJSON.containsKey("Active")) {
+      boolean Active = bodyJSON["Active"];
+      if (profile->Active != Active) {
+        profile->Active = Active;
+        udp_printf(" - Updated Active to %d", profile->Active);
+      } else {
+        udp_printf(" - Active remains %d", profile->Active);
+      }
     }
 
     request->send_P(200, "application/json", "{}");
@@ -323,7 +340,7 @@ void handle_UpdateGlobalParameters(AsyncWebServerRequest* request, uint8_t* data
 void handle_ManualRipple(AsyncWebServerRequest *request) {
   udp_printf("Received manual ripple request");
   manualFireRipple = 1;
-  request->send(SPIFFS, "/oneindex.html", String(), false, nullptr);
+  request->send(LittleFS, "/oneindex.html", String(), false, nullptr);
 }
 
 /* checkbox handling */

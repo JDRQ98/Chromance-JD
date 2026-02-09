@@ -11,7 +11,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ElegantOTA.h>
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include "Alexa/HueBridge.h"
 

@@ -90,14 +90,20 @@ void loop()
           for(int j = 0; j < NUMBER_OF_NODES; j++){ //iterate through all nodes
             if(!GlobalParameters.RippleProfiles[i].ActiveNodes[j]) continue; //skip inactive nodes
             
-            for(int direction = 0U; direction < NUMBER_OF_DIRECTIONS; direction++){
+            int dirStart = 0;
+            int dirEnd = NUMBER_OF_DIRECTIONS;
+            if(GlobalParameters.RippleProfiles[i].Direction >= 0 && GlobalParameters.RippleProfiles[i].Direction < NUMBER_OF_DIRECTIONS){
+              dirStart = GlobalParameters.RippleProfiles[i].Direction;
+              dirEnd = dirStart + 1;
+            }
+            for(int direction = dirStart; direction < dirEnd; direction++){
 
-              rippleFired_return |= FireRipple(&nextRipple, 
-                direction, 
+              rippleFired_return |= FireRipple(&nextRipple,
+                direction,
                 GlobalParameters.RippleProfiles[i].Colors[GlobalParameters.RippleProfiles[i].CurrentColor],
                 j, /* node */
                 GlobalParameters.RippleProfiles[i].Behavior,
-                GlobalParameters.RippleProfiles[i].RippleLifeSpan, 
+                GlobalParameters.RippleProfiles[i].RippleLifeSpan,
                 GlobalParameters.RippleProfiles[i].RippleSpeed,
                 GlobalParameters.RippleProfiles[i].RainbowDeltaPerTick,
                 noPreference,
