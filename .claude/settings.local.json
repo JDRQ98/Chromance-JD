@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(du:*)",
+      "Bash(git submodule:*)",
+      "Bash(~/.platformio/penv/bin/platformio run:*)",
+      "Bash(ls:*)",
+      "Bash(git -C /mnt/c/Projects/ESP32/PlatformIO/ESP32-WROOM/Chromance_V2 rev-parse --show-toplevel)",
+      "Bash(git ls-tree:*)",
+      "Bash(wc:*)",
+      "Bash(git -C src status)"
+    ]
+  }
+}

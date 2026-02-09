@@ -1,0 +1,22 @@
+
+//test getCurrentProfiles
+curl -X GET http://192.168.100.37/getCurrentProfiles
+
+
+//update existing Profile
+curl -X POST http://192.168.100.37/updateProfile \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ProfileIndex": 0,
+    "ProfileName": "UnitTestProfile",
+    "Active": true,
+    "ActiveNodes": [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    "Behavior": 1,
+    "Direction": 2,
+    "RippleLifeSpan": 2000,
+    "DelayBetweenRipples_ms": 2000,
+    "RippleSpeed": 1.0,
+    "RainbowDeltaPerTick": 100,
+    "NumberOfColors": 1,
+    "Colors": ["#FF0000"]
+  }'
