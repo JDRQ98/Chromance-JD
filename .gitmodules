@@ -1,0 +1,6 @@
+[submodule "data"]
+	path = data
+	url = https://github.com/JDRQ98/Chromance-WebUI.git
+[submodule "src"]
+	path = src
+	url = https://github.com/JDRQ98/Chromance-JD.git
