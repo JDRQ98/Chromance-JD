@@ -1,13 +1,18 @@
 #include <WiFi_utilities.h>
 #include <ESPmDNS.h>
 #include "ASW.h" /* for OTA routines */
+#include "Alexa/AlexaControl.h"
+#include "Alexa/HueBridge.h"
+#include "HTTP_Server.h"
+#include "MCAL/ripple.h"
+#include "MCAL/EEP.h"
 
 /* Local variables */
 const char *udpServerIP = UDP_SERVER_IP;
 
 AsyncWebServer server(80);
 
-HueBridge hueBridge;
+static HueBridge hueBridge;
 
 WiFiUDP udp;
 IPAddress udpServer;
@@ -55,6 +60,9 @@ static void setupWebServer(void){
   server.on("/js/nodeManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/js/nodeManager.js", String(), false, nullptr); });
 
+  server.on("/js/timelineManager.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/js/timelineManager.js", String(), false, nullptr); });
+
   /* JS - landing page */
   server.on("/js/landing.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/js/landing.js", String(), false, nullptr); });
@@ -62,27 +70,74 @@ static void setupWebServer(void){
   server.on("/js/landing-no-cors.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/js/landing-no-cors.js", String(), false, nullptr); });
 
+  server.on("/resetWifi", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "WiFi credentials erased. Restarting into AP mode — connect to 'Chromance' to reconfigure.");
+    wifiManagerResetSettings();
+    delay(500);
+    ESP.restart();
+  });
+
+  /* Allow cross-origin requests so the WebUI works when accessed from a
+     different network segment than the ESP32 (e.g. main WiFi vs guest WiFi).
+     DefaultHeaders are appended to every response automatically. */
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  /* Catch-all: OPTIONS preflight → 200, /api/* → HueBridge, everything else → 404 */
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    if (request->method() == HTTP_OPTIONS) {
+      request->send(200);
+      return;
+    }
+    if (request->url().startsWith("/api/")) {
+      hueBridge.handleApiRequest(request);
+      return;
+    }
+    request->send(404);
+  });
+
   HTTP_backend_init();
+
+  /* Register Hue Bridge API routes + start UPnP SSDP listener on port 1900.
+     This must come AFTER HTTP_backend_init() so all routes are registered before
+     server.begin() is called in setupOTA(). */
+  hueBridge.addDevice("Chromance");
+  hueBridge.onSetState([](unsigned char /*id*/, bool state, unsigned char bri,
+                          short /*ct*/, unsigned int /*hue*/, unsigned char /*sat*/,
+                          char /*mode*/) {
+    xSemaphoreTake(gParamsMutex, portMAX_DELAY);
+
+    GlobalParameters.StableColorMode = state;        /* ON → nightlight, OFF → ripples */
+    GlobalParameters.MasterFireRippleEnabled = false;
+    pendingKillProfileIndex = -2;                    /* kill all in-flight ripples */
+
+    if (bri > 0) {
+      GlobalParameters.Brightness = bri;
+      for (int s = 0; s < NUMBER_OF_STRIPS; s++)
+        strips[s].setBrightness(bri);
+    }
+
+    EEPROM_MarkDirty();
+    xSemaphoreGive(gParamsMutex);
+
+    udp_printf("[Alexa] state=%s bri=%d\n", state ? "ON" : "OFF", bri);
+  });
+  hueBridge.start(server);
 }
 
 static void setupWifiManager(void)
 {
-  /* this function initializes wifi connection via 'WifiManager' library, which creates an AP for user to provide SSDI and password, avoiding the hardcoding of wifi credentials */
-  // WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wm;
-
-  bool res;
-
-  res = wm.autoConnect("Chromance"); // AP not password protected
-
-  if (!res)
+  /* Uses wifiManagerConnect() wrapper so WiFiManager.h (which pulls in
+     WebServer.h) is compiled in an isolated TU, avoiding HTTP method enum
+     conflicts with ESPAsyncWebServer. */
+  if (!wifiManagerConnect("Chromance"))
   {
     Serial.println("Failed to connect");
     ESP.restart();
   }
   else
   {
-    // if you get here you have connected to the WiFi
     Serial.print("Connected successfully. Local IP Address: ");
     Serial.println(WiFi.localIP());
   }
@@ -90,15 +145,20 @@ static void setupWifiManager(void)
 
 void setupWiFi(void)
 {
+  Serial.printf("[T+%lums] WiFiManager start\n", millis());
   setupWifiManager();
+  Serial.printf("[T+%lums] WiFiManager done\n", millis());
 
   /* Initialize LittleFS for serving HTML */
+  Serial.printf("[T+%lums] LittleFS mount start\n", millis());
   if(!LittleFS.begin(true)){
     Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
+  Serial.printf("[T+%lums] LittleFS mounted\n", millis());
 
   setupWebServer();
+  Serial.printf("[T+%lums] WebServer routes registered\n", millis());
 }
 
 void setupOTA(void)
@@ -137,24 +197,35 @@ void setupUDP(void)
 void WiFi_Utilities_init(void)
 {
   setupWiFi();
+
+  Serial.printf("[T+%lums] UDP setup start\n", millis());
   setupUDP();
+  Serial.printf("[T+%lums] UDP done\n", millis());
+
+  Serial.printf("[T+%lums] OTA setup start\n", millis());
   setupOTA();
+  Serial.printf("[T+%lums] OTA done\n", millis());
 
-  hueBridge.addDevice(ALEXA_DEVICE_NAME);
-  hueBridge.onSetState(handle_SetState);
-  hueBridge.start();
+  AlexaControl_Init();
+  Serial.printf("[T+%lums] fauxmoESP started\n", millis());
 
-  DEBUG_MSG_HUE("Setup MDNS for http://hexagono.local");
+  Serial.printf("[T+%lums] mDNS setup start\n", millis());
   if (!MDNS.begin("hexagono"))
   {
     DEBUG_MSG_HUE("Error setting up MDNS responder!");
   }
+  else
+  {
+    DEBUG_MSG_HUE("mDNS 'hexagono.local' registered\n");
+  }
+  Serial.printf("[T+%lums] mDNS done\n", millis());
 }
 
 void WiFi_Utilities_loop(void)
 {
   ElegantOTA.loop();
-  hueBridge.handle();
+  AlexaControl_Handle();  /* no-op stub */
+  hueBridge.handle();     /* polls UPnP SSDP socket for M-SEARCH packets */
 }
 
 /// UDP printf function (supports printf-style formatting)

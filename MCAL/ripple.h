@@ -51,15 +51,17 @@ void SetPixelColor_AllLEDs();
 void Strips_init();
 void Ripple_MainFunction();
 void Ripple_KillAllRipples();
+void Ripple_KillProfileRipples(unsigned char profileIndex);
 
 /* functions used by Application Software */
-extern bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit);
-extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
-extern bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit);
+extern bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit, unsigned char sourceProfile = 0xFF);
+extern bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit, unsigned char sourceProfile = 0xFF);
+extern bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit, unsigned char sourceProfile = 0xFF);
 extern void setSegmentColor(int segment, int col);
 
 /* extern the strips for finer control if neede */
 extern Adafruit_NeoPixel strips[NUMBER_OF_STRIPS];
+
 
 class Ripple {
   public:
@@ -69,6 +71,7 @@ class Ripple {
     }
 
     rippleState state = dead;
+    unsigned char sourceProfile = 0xFF; /* Which profile index spawned this ripple (0xFF = untracked) */
     unsigned long color;
     unsigned short hue;
     unsigned short hueDeltaPerTick; /* hue is incremented by this amount every time advance is called; set to 0 for solid color */
@@ -83,7 +86,7 @@ class Ripple {
     int position[2];
 
     // Place the Ripple in a node
-    void start(byte n, byte d, unsigned long c, float s, unsigned long l, byte b, unsigned short h, unsigned short hDelta, directionBias bias, unsigned short nLimit) {
+    void start(byte n, byte d, unsigned long c, float s, unsigned long l, byte b, unsigned short h, unsigned short hDelta, directionBias bias, unsigned short nLimit, unsigned char srcProfile = 0xFF) {
       position[0] = n; /* starting node */
       position[1] = d; /* direction */
       color = c;
@@ -94,13 +97,12 @@ class Ripple {
       hueDeltaPerTick = hDelta;
       rippleBias = bias;
       nodeLimit = nLimit;
+      sourceProfile = srcProfile;
 
       birthday = millis();
       lastAdvanceTime = birthday;
       pressure = 0;
       state = withinNode;
-
-      
 
       justStarted = true;
 
@@ -459,6 +461,11 @@ class Ripple {
       }
     }
 
+    /* Live-update setters for applying profile changes to in-flight ripples */
+    void setSpeed(float s) { speed = s; }
+    void setBehavior(byte b) { behavior = b; }
+    void setHueDeltaPerTick(unsigned short h) { hueDeltaPerTick = h; }
+
   private:
     float speed;  // Each loop, ripples move this many LED's.
     unsigned long lifespan;  // The ripple stops after this many milliseconds
@@ -513,5 +520,7 @@ class Ripple {
     }
 };
 
+/* extern ripple array for live-updating in-flight ripples */
+extern Ripple ripples[MAX_NUMBER_OF_RIPPLES];
 
 #endif

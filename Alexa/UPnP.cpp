@@ -1,5 +1,6 @@
 
 #include "UPnP.h"
+#include "WiFi_utilities.h" // for udp_printf
 
 void UPnP::handle()
 {
@@ -37,16 +38,23 @@ void UPnP::_sendUDPResponse()
     mac.replace(":", "");
     mac.toLowerCase();
 
-    char response[strlen(UPnP_UDP_RESPONSE_TEMPLATE) + 128];
+    /* Always advertise the Hue bridge device type regardless of what ST was in
+       the M-SEARCH.  Alexa's bridge discovery filters responses by ST and only
+       processes ones that identify a basic UPnP device; echoing back the
+       request ST (e.g. "upnp:rootdevice" or "ssdp:all") causes Alexa to skip
+       the response entirely and never fetch /description.xml. */
+    char response[strlen_P(UPnP_UDP_RESPONSE_TEMPLATE) + 256];
     snprintf_P(
         response, sizeof(response),
         UPnP_UDP_RESPONSE_TEMPLATE,
-        ip[0], ip[1], ip[2], ip[3], _tcp_port,  // LOCATION
-        mac.c_str(), // hue-bridgeid
-        mac.c_str()  // USN
+        ip[0], ip[1], ip[2], ip[3], _tcp_port,
+        mac.c_str(),
+        "urn:schemas-upnp-org:device:basic:1",  // ST  — fixed Hue bridge type
+        mac.c_str(),
+        "upnp:rootdevice"                        // USN suffix — fixed rootdevice
         );
 
-    DEBUG_MSG_UPnP("\n[UPnP] Responding to M-SEARCH request from %s:%d\n%s", _udp.remoteIP().toString().c_str(), _udp.remotePort(), response);
+    DEBUG_MSG_UPnP("[UPnP] -> response sent to %s:%d\n", _udp.remoteIP().toString().c_str(), _udp.remotePort());
 
     _udp.beginPacket(_udp.remoteIP(), _udp.remotePort());
     #if defined(ESP32)
@@ -78,8 +86,27 @@ void UPnP::_handleUDP()
         String request = (const char *)data;
         if (request.indexOf("M-SEARCH") >= 0)
         {
-            DEBUG_MSG_UPnP("\n[UPnP] M-SEARCH received from  %s:%d\n%s", _udp.remoteIP().toString().c_str(), _udp.remotePort(), (const char *)data);
-            if ((request.indexOf("ssdp:discover") > 0) || (request.indexOf("upnp:rootdevice") > 0) || (request.indexOf("device:basic:1") > 0))
+            /* Extract ST header for logging (search for "\nST:" to avoid
+               matching "ST" inside "HOST:"). */
+            String st = "(unknown)";
+            int stIdx = request.indexOf("\nST:");
+            if (stIdx >= 0) {
+                stIdx += 1; // skip the '\n', point at "ST:"
+                int eol = request.indexOf('\r', stIdx);
+                if (eol < 0) eol = request.indexOf('\n', stIdx + 1);
+                st = request.substring(stIdx + 3, eol >= 0 ? eol : (int)request.length());
+                st.trim();
+            }
+
+            bool willRespond = (request.indexOf("ssdp:discover") > 0)  // MAN header
+                            || (request.indexOf("ssdp:all") > 0)
+                            || (request.indexOf("upnp:rootdevice") > 0)
+                            || (request.indexOf("device:basic:1") > 0);
+            DEBUG_MSG_UPnP("[UPnP] M-SEARCH from %s:%d ST=%s %s\n",
+                _udp.remoteIP().toString().c_str(), _udp.remotePort(),
+                st.c_str(),
+                willRespond ? "(responding)" : "(ignored)");
+            if (willRespond)
             {
                 _sendUDPResponse();
             }

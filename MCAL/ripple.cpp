@@ -175,11 +175,20 @@ void Ripple_KillAllRipples(){
   }
 }
 
+/* kill only ripples belonging to a specific profile */
+void Ripple_KillProfileRipples(unsigned char profileIndex){
+  for (int i = 0; i < MAX_NUMBER_OF_RIPPLES; i++)
+  {
+    if(ripples[i].state != dead && ripples[i].sourceProfile == profileIndex)
+      ripples[i].state = dead;
+  }
+}
+
 
 
 /* elemental FireRipple functions */
 
-bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit){
+bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, directionBias bias, unsigned short nodeLimit, unsigned char sourceProfile){
   //int hue = fmap(random(100), 0, 99, 0, 0xFFFF);
   int tempRipple = *ripple;
   int hue = col; //col is already a hue value
@@ -196,7 +205,8 @@ bool FireRipple(int* ripple, int dir, int col, int node, rippleBehavior behavior
         hue,
         hDelta,
         bias,
-        nodeLimit
+        nodeLimit,
+        sourceProfile
      );
     *ripple = tempRipple+1; /* increase ripple number */
     if(*ripple >= MAX_NUMBER_OF_RIPPLES) *ripple = 0; /* wrap around if needed */
@@ -234,42 +244,42 @@ void setSegmentColor(int segment, int col)
     Fires two ripples: one biased towards Right and one biased towards left in the same direction
     dependencies: FireRipple
 */
-bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit){
+bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit, unsigned char sourceProfile){
   int currentRipple;
   bool rippleFired = 0;
   currentRipple = *firstRipple;
   if (dir < 0)
   { /* fire in all directions */
-    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
   }
   else
   { /* fire only in one direction */
-    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
   }
   *firstRipple = currentRipple;
@@ -282,43 +292,43 @@ bool FireDoubleRipple(int* firstRipple, int dir, int color, int node, rippleBeha
     only makes sense for starburst nodes and quad nodes!
     dependencies: FireRipple
 */
-bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit)
+bool FireShard(int *firstRipple, int dir, int color, int node, rippleBehavior behavior, unsigned long lifespan, float speed, unsigned short hDelta, unsigned short nodeLimit, unsigned char sourceProfile)
 {
   int currentRipple;
   bool rippleFired = 0;
   currentRipple = *firstRipple;
   if (dir < 0)
   { /* fire in all directions */
-    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 0, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 1, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 2, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 3, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 4, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, 5, color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
   }
   else
   { /* fire only in one direction */
-    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, dir, color, node, behavior, lifespan, speed, hDelta, preferRightTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
-    rippleFired |= FireRipple(&currentRipple, ((dir+1)%6), color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit);
+    rippleFired |= FireRipple(&currentRipple, ((dir+1)%6), color, node, behavior, lifespan, speed, hDelta, preferLeftTwice, nodeLimit, sourceProfile);
     currentRipple = (currentRipple) % MAX_NUMBER_OF_RIPPLES;
   }
   *firstRipple = currentRipple;

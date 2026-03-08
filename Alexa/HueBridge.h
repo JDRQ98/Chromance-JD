@@ -2,10 +2,8 @@
 #define HUE_BRIDGE_H
 
 #include <vector>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 #include "UPnP.h"
-#include <ArduinoJson.h>
-
 #include "WiFi_utilities.h"
 
 
@@ -17,7 +15,7 @@ typedef struct {
     short ct;
     unsigned int hue;
     unsigned char sat;
-    char mode; 
+    char mode;
 
 } device_t;
 
@@ -27,29 +25,28 @@ class HueBridge
 {
     public:
         unsigned char addDevice(const char * device_name);
-        void start();
-        void handle();
+        void start(AsyncWebServer& server);
+        void handle(); // drives UPnP discovery polling
 
         void onSetState(TSetStateCallback fn) { _setCallback = fn; }
         void setState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode);
 
+        /* Called from the onNotFound handler for any /api/* URL that doesn't
+           match a registered route (e.g. different username, or /api/{user}) */
+        void handleApiRequest(AsyncWebServerRequest* request);
+
     private:
-        void handle_GetDescription();
-        void handle_PostDeviceType();
-        void handle_GetState(); 
+        void handle_GetDescription(AsyncWebServerRequest* request);
+        void handle_PostDeviceType(AsyncWebServerRequest* request);
+        void handle_GetState(AsyncWebServerRequest* request);
+        void handle_GetBridgeInfo(AsyncWebServerRequest* request);
         String deviceJson(unsigned char id);
-        void handle_PutState();
-        void handle_root();
-        void handle_clip();
-        void handle_CORSPreflight();
-        void handle_NotFound();
-        
+        void handle_PutState(AsyncWebServerRequest* request, uint8_t* data, size_t len);
+        void handle_clip(AsyncWebServerRequest* request);
 
         std::vector<device_t> lights;
-        //UPnP upnp; 
-        WebServer webServer; 
+        UPnP upnp;
         TSetStateCallback _setCallback = NULL;
-        String uuid = "";
 };
 
 #endif /*HUE_BRIDGE_H*/

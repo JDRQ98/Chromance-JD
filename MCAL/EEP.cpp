@@ -38,24 +38,94 @@ void EEPROM_Init(void)
       preferencesObject.begin("chromance", RW_MODE); //  reopen it in RW mode.
   
       // Store the factory default values into the namespace
-      setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[0]); // Set up the default profile parameters in the GlobalParameters run-time structure.
       GlobalParameters.MasterFireRippleEnabled = 1; // Enable master automatic ripples by default
       GlobalParameters.Decay = DECAY_DEFAULT; // Set default decay value
-      GlobalParameters.NumberOfActiveProfiles = 1; // Start with one active profile by default
+      GlobalParameters.Brightness = BRIGHTNESS_DEFAULT; // Set default brightness
+      GlobalParameters.NumberOfActiveProfiles = 4; // Start with 4 preset profiles
+
+      // Sequencer defaults
+      GlobalParameters.SequencerEnabled = false;
+      GlobalParameters.SequencerMode = 0; // sequential
+      GlobalParameters.SequencerDwellTime_s = SEQUENCER_DWELL_DEFAULT;
+      GlobalParameters.SequencerCurrentProfile = 0;
+      GlobalParameters.SequencerLastSwitch_ms = 0;
+
+      // BPM default (UI reference only)
+      GlobalParameters.GlobalBPM = BPM_DEFAULT;
+
+      // Stable color mode defaults
+      GlobalParameters.StableColorMode = false;
+      GlobalParameters.StableColorHue  = 43690;  /* blue ~240° */
+      GlobalParameters.StableColorSat  = 255;
+      GlobalParameters.PulseFrequency  = 0.3f;
+      GlobalParameters.PulseDepth      = 0.4f;
+      memset(GlobalParameters.StableColorSegments, true, NUMBER_OF_SEGMENTS);
+
+      // Profile 0: "Rainbow 7" — rainbow colors from center node
+      setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[0]);
       strncpy(GlobalParameters.RippleProfiles[0].ProfileName, "Rainbow 7", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[0].ProfilePeriod_ms = 3000;
+      // Events[0] already set by setupDefaultProfileParameters (center node, feisty, speed 0.5, rainbow delta 200)
+
+      // Profile 1: "Ocean Wave" — blues/cyans, slow, border nodes
+      setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[1]);
+      strncpy(GlobalParameters.RippleProfiles[1].ProfileName, "Ocean Wave", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[1].ProfilePeriod_ms = 4000;
+      GlobalParameters.RippleProfiles[1].NumberOfColors = 4;
+      GlobalParameters.RippleProfiles[1].Colors[0] = 43690; /* blue (hue 240°) */
+      GlobalParameters.RippleProfiles[1].Colors[1] = 38229; /* cyan-blue (hue 210°) */
+      GlobalParameters.RippleProfiles[1].Colors[2] = 32768; /* cyan (hue 180°) */
+      GlobalParameters.RippleProfiles[1].Colors[3] = 36044; /* teal (hue ~198°) */
+      // Update event 0 nodes and settings
+      memset(GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes));
+      for(int i = 0; i < numberOfBorderNodes; i++) GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes[borderNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[1].Events[0].RippleSpeed = 0.3;
+      GlobalParameters.RippleProfiles[1].Events[0].RippleLifeSpan = 4000;
+      GlobalParameters.RippleProfiles[1].Events[0].Behavior = weaksauce;
+      GlobalParameters.RippleProfiles[1].Events[0].RainbowDeltaPerTick = 0;
+
+      // Profile 2: "Fire Storm" — reds/oranges/yellows, fast, center node
+      setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[2]);
+      strncpy(GlobalParameters.RippleProfiles[2].ProfileName, "Fire Storm", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[2].ProfilePeriod_ms = 1500;
+      GlobalParameters.RippleProfiles[2].NumberOfColors = 4;
+      GlobalParameters.RippleProfiles[2].Colors[0] = 0;     /* red (hue 0°) */
+      GlobalParameters.RippleProfiles[2].Colors[1] = 3640;  /* orange-red (hue ~20°) */
+      GlobalParameters.RippleProfiles[2].Colors[2] = 5461;  /* orange (hue ~30°) */
+      GlobalParameters.RippleProfiles[2].Colors[3] = 9102;  /* yellow-orange (hue ~50°) */
+      // Event 0 already has center node from setupDefaultProfileParameters
+      GlobalParameters.RippleProfiles[2].Events[0].RippleSpeed = 1.5;
+      GlobalParameters.RippleProfiles[2].Events[0].RippleLifeSpan = 2000;
+      GlobalParameters.RippleProfiles[2].Events[0].Behavior = angry;
+      GlobalParameters.RippleProfiles[2].Events[0].RainbowDeltaPerTick = 0;
+
+      // Profile 3: "Forest" — greens/yellows, medium speed, quad nodes
+      setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[3]);
+      strncpy(GlobalParameters.RippleProfiles[3].ProfileName, "Forest", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[3].ProfilePeriod_ms = 2500;
+      GlobalParameters.RippleProfiles[3].NumberOfColors = 4;
+      GlobalParameters.RippleProfiles[3].Colors[0] = 21845; /* green (hue 120°) */
+      GlobalParameters.RippleProfiles[3].Colors[1] = 18204; /* yellow-green (hue ~100°) */
+      GlobalParameters.RippleProfiles[3].Colors[2] = 14563; /* chartreuse (hue ~80°) */
+      GlobalParameters.RippleProfiles[3].Colors[3] = 10922; /* yellow (hue ~60°) */
+      memset(GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes));
+      for(int i = 0; i < numberOfQuadNodes; i++) GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes[QuadNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[3].Events[0].RippleSpeed = 0.7;
+      GlobalParameters.RippleProfiles[3].Events[0].RippleLifeSpan = 4000;
+      GlobalParameters.RippleProfiles[3].Events[0].Behavior = feisty;
+      GlobalParameters.RippleProfiles[3].Events[0].RainbowDeltaPerTick = 0;
 #if EEPROM_DEBUGGING
       udp_printf("Default global parameters setup by EEPROM_INIT");
       udp_printf(" - MasterFireRippleEnabled: %d", GlobalParameters.MasterFireRippleEnabled);
       udp_printf(" - NumberOfActiveProfiles: %d", GlobalParameters.NumberOfActiveProfiles);
-      udp_printf(" - Profile 0 Name: \"%s\"", GlobalParameters.RippleProfiles[0].ProfileName);
-      udp_printf(" - Profile 0 Active: %d", GlobalParameters.RippleProfiles[0].Active);
-      udp_printf(" - Profile 0 DelayBetweenRipples_ms: %d", GlobalParameters.RippleProfiles[0].DelayBetweenRipples_ms);
-      udp_printf(" - Profile 0 RippleLifeSpan: %d", GlobalParameters.RippleProfiles[0].RippleLifeSpan);
-      udp_printf(" - Profile 0 RippleSpeed: %f", GlobalParameters.RippleProfiles[0].RippleSpeed);
-      udp_printf(" - Profile 0 NumberOfColors: %d", GlobalParameters.RippleProfiles[0].NumberOfColors);
-      udp_printf(" - Profile 0 CurrentColor: %d", GlobalParameters.RippleProfiles[0].CurrentColor);
-      udp_printf(" - Profile 0 Behavior: %d", GlobalParameters.RippleProfiles[0].Behavior);
-      udp_printf(" - Profile 0 RainbowDeltaPerTick: %d", GlobalParameters.RippleProfiles[0].RainbowDeltaPerTick);
+      udp_printf(" - SequencerEnabled: %d, Mode: %d, Dwell: %ds", GlobalParameters.SequencerEnabled, GlobalParameters.SequencerMode, GlobalParameters.SequencerDwellTime_s);
+      for(int p = 0; p < GlobalParameters.NumberOfActiveProfiles; p++){
+        udp_printf(" - Profile %d Name: \"%s\", Active: %d, Colors: %d, Period: %lu ms", p,
+          GlobalParameters.RippleProfiles[p].ProfileName,
+          GlobalParameters.RippleProfiles[p].Active,
+          GlobalParameters.RippleProfiles[p].NumberOfColors,
+          GlobalParameters.RippleProfiles[p].ProfilePeriod_ms);
+      }
 #endif
       // Store the run-time variables into the Preferences namespace
       
@@ -103,13 +173,13 @@ void EEPROM_Init(void)
       udp_printf(" - NumberOfActiveProfiles: %d", GlobalParameters.NumberOfActiveProfiles);
       udp_printf(" - Profile 0 Name: \"%s\"", GlobalParameters.RippleProfiles[0].ProfileName);
       udp_printf(" - Profile 0 Active: %d", GlobalParameters.RippleProfiles[0].Active);
-      udp_printf(" - Profile 0 DelayBetweenRipples_ms: %d", GlobalParameters.RippleProfiles[0].DelayBetweenRipples_ms);
-      udp_printf(" - Profile 0 RippleLifeSpan: %d", GlobalParameters.RippleProfiles[0].RippleLifeSpan);
-      udp_printf(" - Profile 0 RippleSpeed: %f", GlobalParameters.RippleProfiles[0].RippleSpeed);
+      udp_printf(" - Profile 0 ProfilePeriod_ms: %lu", GlobalParameters.RippleProfiles[0].ProfilePeriod_ms);
       udp_printf(" - Profile 0 NumberOfColors: %d", GlobalParameters.RippleProfiles[0].NumberOfColors);
       udp_printf(" - Profile 0 CurrentColor: %d", GlobalParameters.RippleProfiles[0].CurrentColor);
-      udp_printf(" - Profile 0 Behavior: %d", GlobalParameters.RippleProfiles[0].Behavior);
-      udp_printf(" - Profile 0 RainbowDeltaPerTick: %d", GlobalParameters.RippleProfiles[0].RainbowDeltaPerTick);
+      udp_printf(" - Profile 0 Event[0] Enabled: %d, Type: %d, Speed: %f",
+        GlobalParameters.RippleProfiles[0].Events[0].Enabled,
+        GlobalParameters.RippleProfiles[0].Events[0].RippleType,
+        GlobalParameters.RippleProfiles[0].Events[0].RippleSpeed);
 #endif
     }
   

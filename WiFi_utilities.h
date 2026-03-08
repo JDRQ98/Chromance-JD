@@ -1,36 +1,26 @@
 #ifndef WIFI_UTILITIES_H
 #define WIFI_UTILITIES_H
 
-/*activate these defines to get additional debugging information foe HueBridge component (Alexa)*/
-//#define DEBUG_UPnP               Serial
-//#define DEBUG_HUE                Serial
 //#define ELEGANTOTA_DEBUG 1
 
 #include "Arduino.h"
-#include <WebServer.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
 #include "LittleFS.h"
-#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
-#include "Alexa/HueBridge.h"
+#include "wifi_manager_wrapper.h"
 
 
 /* Configuration */
-#define UDP_SERVER_IP "192.168.100.18" // Replace with the IP of your UDP listener (e.g., your computer)
+#define UDP_SERVER_IP "192.168.100.67" // Replace with the IP of your UDP listener (e.g., your computer)
 #define UDP_PRINT_ENABLED 1
 #define UDP_MAX_RETRIES 1    // Number of retries
 #define UDP_RETRY_DELAY 5  // Delay in milliseconds between retries
 const int udpPort = 8888;                    // Replace with the desired UDP port
 
-#define ALEXA_DEVICE_NAME "hexagono"
-
 extern const char *udpServerIP;
 extern AsyncWebServer server;
-
-
-/*callbacks provided by application */
-extern void handle_SetState(unsigned char id, bool state, unsigned char bri, short ct, unsigned int hue, unsigned char sat, char mode);
 
 /*APIs*/
 void WiFi_Utilities_init(void);
@@ -43,14 +33,7 @@ size_t udp_println(const char msg);
 size_t udp_println(int val);
 size_t udp_println(long val);
 
-#ifdef DEBUG_HUE
-    #if defined(ARDUINO_ARCH_ESP32)
-        #define DEBUG_MSG_HUE(fmt, ...) { DEBUG_HUE.printf_P((PGM_P) PSTR(fmt), ## __VA_ARGS__); }
-    #else
-        #error Platform not supported
-    #endif
-#else
-    #define DEBUG_MSG_HUE(...)
-#endif
+// Route HueBridge debug output through UDP so it appears in UDP_Monitor.py
+#define DEBUG_MSG_HUE(fmt, ...) { udp_printf(fmt, ## __VA_ARGS__); }
 
 #endif /*WIFI_UTILITIES_H*/
