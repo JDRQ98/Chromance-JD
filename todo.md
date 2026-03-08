@@ -204,13 +204,29 @@
 - Brightness persisted to EEPROM via existing debounced save
 - Landing page has a slider that loads current value and sends updates on change
 
-### [ ] Phase 4: Firmware-Side Sequence Engine
-**Status**: Planned
+### [x] Phase 4: Firmware-Side Sequence Engine (COMPLETED)
+**Status**: Implemented 2026-02-09
 **Summary**: ESP32 autonomously cycles through active profiles without WebUI involvement.
+**Files Modified**: `src/HTTP_Server.h`, `src/HTTP_Server.cpp`, `src/main.cpp`, `src/MCAL/EEP.cpp`, `src/MCAL/ripple.h`
+**Changes**:
+- Added `SequencerEnabled`, `SequencerMode` (sequential/random), `SequencerDwellTime_s` (10-120s) to GlobalParameters_struct
+- Sequencer gate in main loop: when enabled, only fires ripples for current sequencer profile
+- Sequential and random mode with automatic profile advancement on dwell timeout
+- REST API: GET returns sequencer state, POST accepts sequencer config with auto-reset on enable
+- 4 default profiles: "Rainbow 7", "Ocean Wave" (blues, border nodes), "Fire Storm" (reds, center), "Forest" (greens, quad nodes)
+- Reactive profile updates: direction/color changes kill+refire, speed/behavior/rainbow apply to in-flight ripples, new active nodes fire catch-up ripples with adjusted lifespan
 
-### [ ] Phase 5: Landing Page Sequencer UI
-**Status**: Planned
+### [x] Phase 5: Landing Page Sequencer UI (COMPLETED)
+**Status**: Implemented 2026-02-09
 **Summary**: Landing page controls to configure firmware-side profile sequencer.
+**Files Modified**: `data/index.html`, `data/js/landing.js`, `data/css/landing.css`
+**Changes**:
+- Toggle switch to enable/disable sequencer
+- Mode dropdown (Sequential / Random)
+- Dwell time slider (10-120s) with live value display
+- Current profile status indicator showing active profile name and settings
+- Loads sequencer state from `/getCurrentProfiles` API response on page load
+- Sends updates via POST to `/updateGlobalParameters` on control changes
 
 ### [ ] Phase 6: WebUI Quality-of-Life
 **Status**: Planned
@@ -235,3 +251,5 @@
 | 2026-02-09 | Phase 2: Auto-Save | Completed | Debounced EEPROM writes on profile/global parameter updates |
 | 2026-02-09 | Phase 3: Time-Invariant Animation | Completed | Delta-time pressure scaling in ripple.h |
 | 2026-02-09 | Brightness Control | Completed | Landing page slider + firmware support for real-time brightness |
+| 2026-02-09 | Phase 4: Firmware Sequencer | Completed | Sequencer engine, 4 default profiles, reactive profile updates |
+| 2026-02-09 | Phase 5: Sequencer UI | Completed | Landing page toggle, mode, dwell controls for firmware sequencer |

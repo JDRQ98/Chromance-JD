@@ -1,18 +1,24 @@
 # Hexachrome Project
 
-ESP32-based LED art installation with 19-node hexagonal topology driving 330 WS2812B LEDs via a web-based effect editor.
+ESP32-based LED art installation with 19-node hexagonal topology driving 330 WS2812B LEDs via a web-based profile manager.
 
 ## Quick Start
 
 | Component | Path |
 |-----------|------|
-| Firmware | `Chromance-JD/` (Arduino/PlatformIO for ESP32) |
-| WebUI | `Chromance-WebUI/` (Vanilla JS SPA) |
+| Firmware | `src/` (Arduino/PlatformIO for ESP32, submodule) |
+| WebUI | `data/` (Vanilla JS, served via LittleFS, submodule) |
 | Device Host | `hexagono.local` (ESP32 mDNS) |
 
 **Key Entry Points:**
-- Firmware: `Chromance-JD/main.cpp` → `setup()` and `loop()`
-- WebUI: `Chromance-WebUI/EffectEditor.html` → loads `js/main.js`
+- Firmware: `src/main.cpp` → `setup()` and `loop()`
+- Landing page: `data/index.html` → loads `data/js/landing.js`
+- Profile editor: `data/ProfileEditor.html` → loads `data/js/main.js`
+
+**Build:**
+- PlatformIO environment: `esp32dev_OTA`
+- Filesystem: LittleFS (not SPIFFS — SPIFFS has 32-char filename limit)
+- Flash firmware first, then filesystem image
 
 ---
 
@@ -21,141 +27,200 @@ ESP32-based LED art installation with 19-node hexagonal topology driving 330 WS2
 ### Physical Topology
 
 ```
-          [ 0 ]                    ← Border node (2 connections)
+          [ 0 ]                    <- Border node (2 connections)
          /     \
-      [1]       [2]                ← Quad nodes (4 connections)
+      [1]       [2]                <- Quad nodes (4 connections)
      / | \     / | \
-  [3]  |  [ 4 ]  |  [5]             ← Mix: Border [3,5] (2 connenctions), Tri/Cube [4] (3 connections)
+  [3]  |  [ 4 ]  |  [5]           <- Mix: Border [3,5], Tri/Cube [4]
    |   |    |    |   |
-   |  [6]   |   [7]  |              ← Tri/Cube nodes [6, 7] (3 connections)
+   |  [6]   |   [7]  |            <- Tri/Cube nodes [6, 7]
    | /   \  |  /   \ |
-  [8]     [ 9 ]     [10]            ← Mix: Quad nodes [8,10] (4 connenctions), [9] = Center (6 connections)
+  [8]     [ 9 ]     [10]          <- Mix: Quad [8,10], [9] = Center (6 connections)
    | \   /  |  \   / |
-   |  [11]  |   [12] |             ← Tri/Cube [11,12]
+   |  [11]  |   [12] |            <- Tri/Cube [11,12]
    |   |    |     |  |
-  [13] |  [ 14]   | [15]          ← Mix: Border nodes [8,10] (2 connenctions), Tri/Cube [14] (3 connections)
+  [13] |  [ 14]   | [15]          <- Mix: Border [13,15], Tri/Cube [14]
     \  | /     \  | /
-     [16]       [17]           ← Quad nodes [16, 17]
+     [16]       [17]               <- Quad nodes [16, 17]
          \     /
-          [ 18]                 ← Border node [18] (2 connections)
+          [ 18]                    <- Border node [18]
 ```
 
 - **19 nodes** connected by **30 segments**
-- **330 LEDs** total (2 strips × 165 LEDs on GPIO 33 and 32)
+- **330 LEDs** total (2 strips x 165 LEDs on GPIO 33 and 32)
 - **11 LEDs per segment**
 
 **Node Types by Connection Count:**
 | Type | Nodes | Connections |
 |------|-------|-------------|
-| Border | 0, 3, 5, 13, 15, 18 |
-| CubePair (120° apart) | 6, 7, 14 |
-| CubeOdd (120° apart) | 4, 11, 12 |
-| Quad | 1, 2, 8, 10, 16, 17 |
-| Center (Starburst) | 9 |
+| Border | 0, 3, 5, 13, 15, 18 | 2 |
+| CubePair (120 deg apart) | 6, 7, 14 | 3 |
+| CubeOdd (120 deg apart) | 4, 11, 12 | 3 |
+| Quad | 1, 2, 8, 10, 16, 17 | 4 |
+| Center (Starburst) | 9 | 6 |
 
 ### Communication Protocol
 
-HTTP REST API (not WebSocket):
+HTTP REST API:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/getInternalVariables` | GET | Retrieve current settings with min/max bounds |
-| `/updateInternalVariables` | POST | Send JSON with globalSettings, activeNodes, nodeSpecificSettings |
+| `/getCurrentProfiles` | GET | Retrieve all profiles, global params, and sequencer state |
+| `/updateProfile` | POST | Update a single profile by index (JSON body) |
+| `/updateGlobalParameters` | POST | Update global settings: decay, brightness, sequencer (JSON body) |
+| `/restoreDefaults` | POST | Wipe EEPROM and restart with factory defaults |
 | `/ManualRipple` | GET | Trigger single manual ripple burst |
 | `/MasterFireRippleEnabled/on` | GET | Enable automatic ripple firing |
 | `/MasterFireRippleEnabled/off` | GET | Disable automatic ripple firing |
 
 ---
 
-## Firmware (Chromance-JD)
+## Firmware (`src/`)
 
 ### File Structure
 
 ```
-Chromance-JD/
-├── main.cpp                 # Entry point, main loop
-├── HTTP_Server.h/cpp        # REST API, GlobalParameters
+src/
+├── main.cpp                 # Entry point, main loop, sequencer logic
+├── HTTP_Server.h/cpp        # REST API, GlobalParameters, profile management
 ├── ASW.h/cpp                # Effect functions, bulk ripple firing
-├── WiFi_utilities.h/cpp     # WiFi, OTA, UDP debug
+├── WiFi_utilities.h/cpp     # WiFi, OTA, UDP debug, web server routes
 ├── MCAL/
-│   ├── ripple.h/cpp         # Core ripple engine
-│   ├── mapping.h/cpp        # Topology definitions
-│   └── EEP.h/cpp            # EEPROM profile storage
+│   ├── ripple.h/cpp         # Core ripple engine (100 concurrent ripples)
+│   ├── mapping.h/cpp        # Topology definitions (nodes, segments, LEDs)
+│   └── EEP.h/cpp            # EEPROM (Preferences) storage with debounced saves
 └── Alexa/                   # Alexa/Hue Bridge integration
 ```
 
+### Data Structures
+
+**RippleProfile_struct** — per-profile settings (up to 10 profiles):
+```cpp
+typedef struct {
+  boolean Active;
+  char ProfileName[32];
+  boolean ActiveNodes[19];         // Which nodes fire ripples
+  rippleBehavior Behavior;         // 0-4 turn aggressiveness
+  signed char Direction;           // -1 = all, 0-5 = specific direction
+  unsigned long RippleLifeSpan;    // ms
+  float RippleSpeed;               // LEDs per tick (pressure gain)
+  short RainbowDeltaPerTick;       // Hue shift per ripple advance
+  unsigned int Colors[16];         // HSV hue values (0-65535)
+  unsigned int NumberOfColors;
+  unsigned int CurrentColor;       // Index into Colors[]
+  short DelayBetweenRipples_ms;
+  unsigned long TimeLastRippleFired_ms;  // Runtime: last fire timestamp
+} RippleProfile_struct;
+```
+
+**GlobalParameters_struct** — global settings + all profiles:
+```cpp
+typedef struct {
+  boolean MasterFireRippleEnabled;
+  float Decay;                             // Brightness fade per tick (0.9-1.0)
+  unsigned char Brightness;                // LED brightness (0-255)
+  RippleProfile_struct RippleProfiles[10]; // Up to 10 profiles
+  unsigned int NumberOfActiveProfiles;
+  boolean SequencerEnabled;                // Is sequencer running?
+  unsigned char SequencerMode;             // 0 = sequential, 1 = random
+  unsigned short SequencerDwellTime_s;     // Seconds per profile (10-120)
+  unsigned char SequencerCurrentProfile;   // Current profile index
+  unsigned long SequencerLastSwitch_ms;    // Runtime: last switch timestamp
+} GlobalParameters_struct;
+```
+
+### Color System
+- Firmware stores colors as **16-bit HSV hue** (0-65535) internally
+- WebUI sends/receives **RGB hex** (`#RRGGBB`)
+- Conversion at API boundary in `HTTP_Server.cpp`: `rgbHexToHue16()` / `hue16ToRgbHex()`
+
 ### Ripple Engine (`MCAL/ripple.h`, `MCAL/ripple.cpp`)
 
-The core animation system. Supports up to 100 concurrent ripples.
+Supports up to 100 concurrent ripples (`MAX_NUMBER_OF_RIPPLES`).
 
-**Ripple States** (`rippleState` enum):
-```cpp
-enum rippleState {
-    dead,              // Inactive, available for reuse
-    withinNode,        // Passing through node (invisible, maintains momentum)
-    travelingUpwards,  // Moving up a segment (rendered)
-    travelingDownwards // Moving down a segment (rendered)
-};
-```
+**Ripple States** (`rippleState` enum): `dead`, `withinNode`, `travelingUpwards`, `travelingDownwards`
 
 **Behavior Modes** (`rippleBehavior` enum):
 | Value | Name | Turn Preference |
 |-------|------|-----------------|
-| 0 | weaksauce | Prefers straight, then 60°, then 120° |
+| 0 | weaksauce | Prefers straight, then 60 deg, then 120 deg |
 | 1 | feisty | Similar but more aggressive |
-| 2 | angry | Takes sharp 120° turns readily |
+| 2 | angry | Takes sharp 120 deg turns readily |
 | 3 | alwaysTurnsRight | Always picks rightmost valid path |
 | 4 | alwaysTurnsLeft | Always picks leftmost valid path |
 
-**Direction Bias** (`directionBias` enum):
-- `noPreference`, `preferLeft`, `preferRight`
-- `preferLeftOnce/Twice`, `preferRightOnce/Twice`
-
 **Key Functions:**
-- `Ripple_MainFunction()` - Main loop: fades LEDs, advances all ripples, calls `strips[].show()`
-- `FireRipple(ripple*, dir, color, node, speed, lifespan, behavior, ...)` - Spawn single ripple
-- `FireDoubleRipple()` - Two diverging ripples from same node
-- `FireShard()` - Two adjacent-direction ripples
-- `Ripple_KillAllRipples()` - Clear all active ripples
+- `Ripple_MainFunction()` — fades LEDs, advances all ripples, calls `strips[].show()`
+- `FireRipple()` — spawn single ripple from a node
+- `FireDoubleRipple()` — two diverging ripples from same node
+- `FireShard()` — two adjacent-direction ripples
+- `Ripple_KillAllRipples()` — clear all active ripples
 
-**Pressure System** (line ~136 in ripple.h):
-Ripples accumulate "pressure" each tick: `pressure += fmap(age, 0, lifespan, speed, speed/2)`. When `pressure >= 1`, ripple advances one LED. This decouples animation from loop frequency.
+**Pressure System:** Ripples accumulate pressure scaled by delta-time (`deltaTime / 16.0f` for 60fps baseline). When `pressure >= 1`, ripple advances one LED. This makes animation speed consistent regardless of loop rate.
+
+**Public Setters** (for reactive updates): `setSpeed()`, `setBehavior()`, `setHueDeltaPerTick()`
+
+**Extern:** `ripples[]` array is accessible from other modules for iterating in-flight ripples.
+
+### Firmware-Side Sequencer
+
+The sequencer cycles through active profiles autonomously, without WebUI involvement during playback.
+
+**Design:** Uses a "gate" pattern in the main loop — when sequencer is enabled, only fires ripples for `SequencerCurrentProfile`. Profile `Active` flags are NOT modified, so disabling the sequencer returns to normal multi-profile behavior.
+
+**Logic (in `main.cpp` loop):**
+1. Check if dwell time has elapsed since last switch
+2. Advance to next profile (sequential wrap-around or random non-repeat)
+3. Gate: skip ripple firing for profiles that aren't the current sequencer profile
+
+**Boot behavior:** `SequencerLastSwitch_ms` is reset to `millis()` in `setup()` to prevent stale EEPROM timestamps from causing immediate switches.
+
+### Reactive Profile Updates
+
+When profile properties are updated via REST API, the firmware reacts immediately:
+
+| Property Changed | Reaction |
+|-----------------|----------|
+| Direction, Colors | Kill all ripples + reset fire timer (immediate refire) |
+| Speed | Apply to all in-flight ripples via `setSpeed()` |
+| Behavior | Apply to all in-flight ripples via `setBehavior()` |
+| RainbowDeltaPerTick | Apply to all in-flight ripples via `setHueDeltaPerTick()` |
+| ActiveNodes (new nodes) | Fire catch-up ripples with adjusted lifespan (`RippleLifeSpan - elapsed`) |
+| Decay | Applies naturally (global fade multiplier) |
+| DelayBetweenRipples, RippleLifeSpan, Brightness, Sequencer | No reactive action |
+
+### Default Profiles (4 presets on first boot)
+
+| Index | Name | Nodes | Colors | Speed | Behavior |
+|-------|------|-------|--------|-------|----------|
+| 0 | Rainbow 7 | All (default) | 7 rainbow hues | 0.5 | feisty |
+| 1 | Ocean Wave | Border nodes | Blues/cyans | 0.3 | weaksauce |
+| 2 | Fire Storm | Center node (9) | Reds/oranges | 1.5 | angry |
+| 3 | Forest | Quad nodes | Greens/yellows | 0.7 | feisty |
+
+### EEPROM / Preferences (`MCAL/EEP.h`, `MCAL/EEP.cpp`)
+
+- Uses ESP32 Preferences library (NVS) with namespace `"chromance"`, key `"GlobalConfig"`
+- First-time run detected by absence of `"nvsInit"` key → writes factory defaults
+- **Struct size change detection:** If `getBytes()` returns fewer bytes than `sizeof(GlobalParameters)`, forces a clear + restart (auto-wipe on struct changes during development)
+- **Debounced saves:** `EEPROM_MarkDirty()` sets a dirty flag; `EEPROM_DebouncedSave()` (called in main loop) writes after 5-second cooldown (`EEPROM_SAVE_COOLDOWN_MS`)
+- Auto-save triggered after profile updates and global parameter changes
 
 ### Topology (`MCAL/mapping.h`, `MCAL/mapping.cpp`)
 
-**Core Data Structures:**
-
 ```cpp
-// For each node, segment ID at each of 6 directions (clockwise from 12 o'clock)
-// -1 = no connection at that direction
-int nodeConnections[NUMBER_OF_NODES][6];  // [19][6]
-
-// For each segment, [ceiling_node, floor_node]
-int segmentConnections[NUMBER_OF_SEGMENTS][2];  // [30][2]
-
-// For each segment, [strip_index, ceiling_led, floor_led]
-int ledAssignments[NUMBER_OF_SEGMENTS][3];  // [30][3]
+int nodeConnections[19][6];     // Per node: segment ID at each of 6 directions (-1 = none)
+int segmentConnections[30][2];  // Per segment: [ceiling_node, floor_node]
+int ledAssignments[30][3];      // Per segment: [strip_index, ceiling_led, floor_led]
 ```
 
-**Direction Indexing:**
-- 0 = 0° (12 o'clock)
-- 1 = 60°
-- 2 = 120°
-- 3 = 180° (6 o'clock)
-- 4 = 240°
-- 5 = 300°
+**Direction Indexing:** 0=0 deg (12 o'clock), 1=60 deg, 2=120 deg, 3=180 deg, 4=240 deg, 5=300 deg
 
-**Constants:**
-```cpp
-#define NUMBER_OF_STRIPS 2
-#define NUMBER_OF_SEGMENTS 30
-#define NUMBER_OF_NODES 19
-#define NUMBER_OF_LEDS_PER_SEGMENT 11
-```
+**Constants:** `NUMBER_OF_STRIPS=2`, `NUMBER_OF_SEGMENTS=30`, `NUMBER_OF_NODES=19`, `NUMBER_OF_LEDS_PER_SEGMENT=11`
 
 ### Effects (`ASW.h`, `ASW.cpp`)
 
-Bulk ripple firing patterns:
+Bulk ripple firing patterns using generic `FireRipple_FromNodes()` helper:
 
 | Function | Description |
 |----------|-------------|
@@ -164,86 +229,43 @@ Bulk ripple firing patterns:
 | `FireRipple_AllQuadNodes()` | Fire from nodes 1,2,8,10,16,17 |
 | `FireRipple_AllPairCubeNodes()` | Fire from nodes 6,7,14 (directions 0,2,4) |
 | `FireRipple_AllOddCubeNodes()` | Fire from nodes 4,11,12 (directions 1,3,5) |
-| `FireEffect_Star()` | Outward star pattern from center |
-| `FireEffect_Random()` | Random effect selection |
-
-### HTTP Server (`HTTP_Server.h`, `HTTP_Server.cpp`)
-
-**GlobalParameters Structure** (line 55-68 in HTTP_Server.h):
-```cpp
-typedef struct {
-    boolean loop_MasterFireRippleEnabled;
-    unsigned char currentStartingNode;
-    unsigned char currentBehavior;          // 0-4
-    signed char currentDirection;           // -1 = all, 0-5 = specific
-    short currentDelayBetweenRipples;       // ms
-    unsigned long currentRippleLifeSpan;    // ms
-    float currentRippleSpeed;               // LEDs per tick
-    float currentDecay;                     // brightness fade multiplier
-    unsigned int currentColor;              // RGB hex
-    short currentRainbowDeltaPerPeriod;
-    short currentRainbowDeltaPerTick;
-    unsigned char currentNumberofColors;
-} GlobalParameters_struct;
-```
 
 ---
 
-## WebUI (Chromance-WebUI)
+## WebUI (`data/`)
 
 ### File Structure
 
 ```
-Chromance-WebUI/
-├── EffectEditor.html        # Main page with node grid and modals
-├── css/index.css            # Styles, node animations
+data/
+├── index.html               # Landing page (profile manager)
+├── ProfileEditor.html        # Profile editor page
+├── css/
+│   └── landing.css           # Styles for landing page
 └── js/
-    ├── main.js              # App init, node positioning, HTTP communication
-    ├── nodeManager.js       # Node class, NodeManager, state management
-    ├── effectsManager.js    # Effect CRUD, localStorage persistence
-    ├── modalManager.js      # Node properties modal with override checkboxes
-    ├── globalSettingsManager.js  # Global effect settings modal
-    ├── colorUtils.js        # Rainbow/random/similar color generation
-    └── drawVisualizer.js    # Segment connection lines
+    ├── landing.js             # Landing page logic (profiles, brightness, sequencer)
+    ├── main.js                # Profile editor logic
+    ├── modalManager.js        # Node properties modal
+    ├── nodeManager.js         # Node grid management
+    └── drawVisualizer.js      # Hexagon segment visualizer
 ```
 
-### State Management
+### Landing Page (`index.html` + `landing.js`)
 
-**Node States:**
-| State | CSS Class | Visual | Meaning |
-|-------|-----------|--------|---------|
-| `inactive` | `regularNode` | Black | Default |
-| `selected` | `SelectedNode` | Red | User clicked for editing |
-| `active` | `ActiveNode` | Pulsing rainbow | Will fire ripples |
-| `activeandselected` | `ActiveandSelectedNode` | Pulsing + red | Both |
+The main interface for managing profiles and global controls:
+- **Profile cards** with color previews, hex grid visualization, and select/edit buttons
+- **Brightness slider** (0-255) with real-time updates
+- **Sequencer controls**: enable/disable toggle, mode (sequential/random), dwell time slider (10-120s)
+- **Status indicator** showing current sequencer profile
+- Restore defaults button with confirmation modal
 
-**Data Objects:**
-- `globalSettings` - Shared settings for all active nodes
-- `nodeSpecificSettings[nodeId]` - Per-node overrides
-- `effects[effectId]` - Saved effects with name, globalSettings, nodeSpecificSettings, activeNodes
-- All persisted to `localStorage`
+### Profile Editor (`ProfileEditor.html` + `main.js`)
 
-**Data Flow:**
-1. User edits settings in modals
-2. `updateCurrentEffect()` saves to `effects` object
-3. `localStorage.setItem('effects', ...)` persists
-4. "Apply Changes" → `sendConfigurationToMicrocontroller()` POSTs to ESP32
-
-### Key Classes
-
-**Node** (nodeManager.js):
-- `toggleSelect()`, `activate()`, `deactivate()`
-- `applyColorAnimation(colors)` - Sets CSS custom properties for pulse animation
-
-**NodeManager** (nodeManager.js):
-- `nodes[]`, `selectedNodes[]`, `activeNodes[]`
-- `selectBiNodes()`, `selectTriNodes()`, `selectQuadNodes()`
-- `getActiveNodes()`, `setActiveNodes(ids)`
-
-**Modal** (modalManager.js):
-- Handles node-specific settings with override checkboxes
-- `loadNodeSettings(node)`, `saveNodeSettings()`, `discardNodeSettings()`
-- Snapshot/restore for cancel functionality
+Per-profile editing with hex grid node selection:
+- Click nodes to select/activate for ripple firing
+- Node properties modal for per-node overrides
+- Color palette management
+- Settings: speed, lifespan, delay, behavior, direction, rainbow delta
 
 ---
 
@@ -251,48 +273,16 @@ Chromance-WebUI/
 
 | Parameter | Min | Default | Max | Description |
 |-----------|-----|---------|-----|-------------|
-| `currentDelayBetweenRipples` | 1 | 3000 | 20000 | ms between auto-fired bursts |
-| `currentRippleLifeSpan` | 1 | 3000 | 20000 | Ripple lifetime in ms |
-| `currentRippleSpeed` | 0.01 | 0.5 | 10 | LEDs per tick (pressure gain) |
-| `currentDecay` | 0.9 | 0.985 | 1.0 | Brightness fade per tick |
-| `currentBehavior` | 0 | 1 | 4 | Turn aggressiveness (0=weak, 4=always left) |
-| `currentDirection` | -1 | -1 | 5 | Starting direction (-1=all) |
-| `currentRainbowDeltaPerTick` | 0 | 200 | 2000 | Hue shift per ripple advance |
-| `currentNumberofColors` | 1 | 7 | 64 | Colors in palette cycle |
-
----
-
-## Common Tasks
-
-### Adding a New Effect Type
-
-1. **ASW.cpp**: Add function following `FireEffect_*` pattern:
-   ```cpp
-   bool FireEffect_MyEffect(unsigned char* currentRipple, int color) {
-       FireRipple(currentRipple, dir, color, node, ...);
-       return true;
-   }
-   ```
-2. **ASW.cpp**: Add to `FireEffect_Random()` switch case
-3. **HTTP_Server.cpp**: Add endpoint handler if exposing via API
-
-### Modifying Topology
-
-1. **mapping.cpp**: Update `nodeConnections[]` and `segmentConnections[]`
-2. **mapping.h**: Update `NUMBER_OF_NODES`, `NUMBER_OF_SEGMENTS`
-3. **main.js**: Update `calculateNodePositions()` for new node positions
-4. **drawVisualizer.js**: Update `drawHexagon()` with new segment connections
-5. **nodeManager.js**: Update node category arrays (`borderNodes`, etc.)
-
-### Adding a New Setting
-
-1. **HTTP_Server.h**: Add to `GlobalParameters_struct`
-2. **HTTP_Server.h**: Add `HTTP_NEWSETTING_MIN/DEFAULT/MAX` defines
-3. **HTTP_Server.cpp**: Add parsing in `handle_UpdateInternalVariables_body()`
-4. **HTTP_Server.cpp**: Add to `handle_getInternalVariables()` response
-5. **EffectEditor.html**: Add input in global settings modal
-6. **globalSettingsManager.js**: Add to `globalSettings` object and `resetGlobalSettings()`
-7. **main.js**: Include in `sendConfigurationToMicrocontroller()` payload
+| `DelayBetweenRipples_ms` | 1 | 3000 | 20000 | ms between auto-fired bursts |
+| `RippleLifeSpan` | 1 | 3000 | 20000 | Ripple lifetime in ms |
+| `RippleSpeed` | 0.01 | 0.5 | 10 | LEDs per tick (pressure gain) |
+| `Decay` | 0.9 | 0.985 | 1.0 | Brightness fade per tick |
+| `Behavior` | 0 | 1 (feisty) | 4 | Turn aggressiveness |
+| `Direction` | -1 | -1 (all) | 5 | Starting direction |
+| `RainbowDeltaPerTick` | 0 | 200 | 2000 | Hue shift per ripple advance |
+| `NumberOfColors` | 1 | 7 | 16 | Colors in palette |
+| `Brightness` | 0 | 128 | 255 | Global LED brightness |
+| `SequencerDwellTime_s` | 10 | 30 | 120 | Seconds per profile in sequencer |
 
 ---
 
@@ -302,17 +292,18 @@ Chromance-WebUI/
 
 - **Serial**: 115200 baud, outputs connection status and errors
 - **UDP Logging**: Sends to `192.168.100.18:8888` via `udp_printf()`
+- **Monitor script**: `scripts/UDP_Monitor.py`
 - **Debug Flags** (ripple.h): Uncomment to enable:
   ```cpp
   // #define DEBUG_ADVANCEMENT
   // #define DEBUG_RENDERING
   // #define DEBUG_PRESSURE
   ```
+- **EEPROM Debug**: `#define EEPROM_DEBUGGING true` in EEP.cpp
 
 ### WebUI
 
 - Console logs throughout - search for `console.log` in js files
-- Check localStorage: `localStorage.getItem('effects')` in DevTools
 - Network tab to inspect POST payloads to `hexagono.local`
 
 ---
@@ -325,216 +316,40 @@ Chromance-WebUI/
 - ArduinoJson
 - WiFiManager
 - ElegantOTA
-- SPIFFS
+- LittleFS (board_build.filesystem = littlefs)
 
 ### WebUI
-- No external dependencies (vanilla ES6 modules)
+- No external dependencies (vanilla JS)
 
 ---
 
-## Improvement Opportunities
+## Development Notes
 
-### ~~1. WebSocket Communication~~ (IN PROGRESS - ~90%)
-**Status**: Firmware implementation complete, WebUI client complete, needs end-to-end testing.
-**Completed**: `WebSocket_Server.h/cpp` (firmware), `wsClient.js` (WebUI)
-**Remaining**: Test integration, add activeNodes/nodeSpecificSettings handling in firmware
+### ASW.h vs ripple.h Type Mismatch
+- `ASW.h` declares functions with `byte behavior`
+- `ripple.h` declares `FireRipple`/`FireDoubleRipple`/`FireShard` with `rippleBehavior behavior`
+- Need explicit `(rippleBehavior)` cast when calling ripple.h functions from byte-typed wrappers
 
-### 2. DRY Ripple Firing Functions
-**Current**: `FireRipple_AllBorderNodes()`, `AllQuadNodes()`, etc. have repetitive loop structures.
-**Proposed**: Generic `FireRipple_ByNodeType(nodeArray, directionArray)`.
-**Files**: `ASW.cpp` (lines 45-179)
+### Web Server Routes
+- All static file routes must be explicitly registered in `WiFi_utilities.cpp setupWebServer()`
+- Adding a new JS/CSS file requires adding a corresponding route
 
-### 3. State Synchronization
-**Current**: WebUI sends settings; firmware may drift without bidirectional sync.
-**Proposed**: Fetch current state on WebUI load via `/getInternalVariables`, implement state hash for conflict detection.
-**Files**: `main.js`, `HTTP_Server.cpp`, `globalSettingsManager.js`
-
-### 4. Live Preview in WebUI
-**Current**: CSS-only node animations, no actual ripple path visualization.
-**Proposed**: Canvas-based animation showing ripples traversing segments using topology data.
-**Files**: `drawVisualizer.js` (expand), new `rippleSimulator.js`
-
-### ~~5. Separation of Concerns~~ (IMPLEMENTED)
-**Status**: Fully implemented. See "WebUI Architecture" section below.
-
-### 6. Time-Invariant Animation
-**Current**: Ripple motion affected by loop speed (noted TODO in ripple.h:136).
-**Proposed**: Use `millis()` delta for pressure calculation instead of per-tick increment.
-**Files**: `MCAL/ripple.h` (advance method ~line 135)
-
-### ~~7. Effect Composition & Sequencing~~ (IMPLEMENTED)
-**Status**: Implemented in WebUI. See "Effect Sequencer" section below.
+### EEPROM Struct Changes
+- Any change to `GlobalParameters_struct` or `RippleProfile_struct` changes `sizeof()`, triggering auto-wipe on next boot
+- This is acceptable during development but means all saved profiles are lost
 
 ---
 
-## WebUI Architecture (REFACTORED)
+## Branches
 
-### Overview
+### `WebSocketRework` (not merged)
+Contains significant WebUI refactoring work:
+- WebSocket communication (bidirectional real-time updates)
+- Event bus architecture (`eventBus.js`)
+- Centralized state store (`stateStore.js`)
+- WebUI-based effect sequencer with playlist/transitions
+- Canvas-based live ripple preview
+- Modular component architecture
 
-The WebUI has been refactored from a tightly-coupled architecture to an event-driven modular system with centralized state management.
-
-### Directory Structure
-
-```
-Chromance-WebUI/js/
-├── core/                    # Core infrastructure
-│   ├── eventBus.js          # Pub/sub event system
-│   ├── stateStore.js        # Centralized state with localStorage
-│   ├── wsClient.js          # WebSocket client with auto-reconnect
-│   └── effectSequencer.js   # Sequencer engine
-├── managers/                # UI managers
-│   ├── main.js              # Bootstrap entry point
-│   ├── modalManager.js      # Node properties modal
-│   ├── nodeManager.js       # Node grid management
-│   ├── effectsManager.js    # Effect CRUD
-│   ├── globalSettingsManager.js  # Global settings modal
-│   └── sequenceManager.js   # Sequence panel
-├── components/              # Reusable components
-│   ├── colorPaletteManager.js    # Color swatch component
-│   └── sequenceEditorModal.js    # Sequence editor
-├── utils/                   # Utilities
-│   └── settingsUtils.js     # Setting name/ID helpers
-├── colorUtils.js            # Color generation
-└── drawVisualizer.js        # Hexagon visualizer
-```
-
-### Key Patterns
-
-**Event Bus** (`eventBus.js`):
-```javascript
-// Subscribe to events
-eventBus.subscribe(Events.NODES_ACTIVATED, ({ nodeIds }) => { ... });
-
-// Publish events
-eventBus.publish(Events.SETTINGS_CHANGED, { type: 'global', settings });
-```
-
-**State Store** (`stateStore.js`):
-- Single source of truth for all application state
-- Automatic persistence to localStorage
-- Publishes events on state changes
-- CRUD operations for effects and sequences
-
-**WebSocket Client** (`wsClient.js`):
-- Auto-reconnect with exponential backoff (1s to 30s)
-- Message queue for offline messages
-- ACK-based message confirmation with 5s timeout
-- Convenience methods: `updateConfig()`, `getState()`, `fireRipple()`
-
----
-
-## Effect Sequencer (NEW)
-
-### Overview
-
-The Effect Sequencer allows users to create playlists of effects that play automatically with configurable durations and transitions. The WebUI manages timing and sends configurations to the ESP32 at each step.
-
-### Architecture
-
-```
-Chromance-WebUI/js/
-├── core/
-│   ├── eventBus.js        # Extended with sequence/playback events
-│   ├── stateStore.js      # Extended with sequence state & persistence
-│   └── effectSequencer.js # NEW: Core sequencer engine
-├── managers/
-│   └── sequenceManager.js # NEW: Sequence panel UI manager
-└── components/
-    └── sequenceEditorModal.js # NEW: Sequence editor modal
-```
-
-### Data Structures
-
-**Sequence** (stored in localStorage under `sequences` key):
-```javascript
-{
-    id: number,              // Unique sequence ID
-    name: string,            // Display name
-    steps: [                 // Array of steps
-        {
-            effectId: number,         // Reference to effect ID
-            duration: number,         // Step duration in ms (500-60000)
-            transitionType: string,   // 'instant', 'fadeIn', 'fadeOut', 'crossfade'
-            transitionDuration: number // Transition time in ms (0-5000)
-        }
-    ],
-    loop: boolean,           // Loop sequence when complete
-    shuffleOnLoop: boolean   // Randomize step order on each loop
-}
-```
-
-**Playback State** (in-memory only):
-```javascript
-{
-    isPlaying: boolean,
-    isPaused: boolean,
-    currentSequenceId: number,
-    currentStepIndex: number,
-    stepStartTime: number,    // performance.now() timestamp
-    elapsedTime: number,      // Accumulated elapsed time (for pause/resume)
-    inTransition: boolean
-}
-```
-
-### Events
-
-| Event | Description |
-|-------|-------------|
-| `SEQUENCE_CREATED` | New sequence created |
-| `SEQUENCE_UPDATED` | Sequence modified |
-| `SEQUENCE_DELETED` | Sequence deleted |
-| `SEQUENCE_LOADED` | Sequence selected |
-| `PLAYBACK_STARTED` | Playback began |
-| `PLAYBACK_PAUSED` | Playback paused |
-| `PLAYBACK_RESUMED` | Playback resumed after pause |
-| `PLAYBACK_STOPPED` | Playback stopped |
-| `PLAYBACK_STEP_CHANGED` | Advanced to new step |
-| `PLAYBACK_PROGRESS` | Progress update (fired every tick) |
-| `PLAYBACK_TRANSITION_START` | Transition began |
-| `PLAYBACK_TRANSITION_END` | Transition completed |
-| `PLAYBACK_LOOP` | Sequence looped |
-
-### Transition Types
-
-| Type | Behavior |
-|------|----------|
-| `instant` | Immediately apply next effect config |
-| `fadeIn` | Briefly set high decay, then apply next effect |
-| `fadeOut` | Stop ripple firing, let current ripples fade, then switch |
-| `crossfade` | Fire both effects briefly (old ripples fade while new ones start) |
-
-### UI Components
-
-**Sequence Panel** (in aside section):
-- Sequence dropdown selector
-- Add/Edit/Delete sequence buttons
-- Playback controls: Previous, Play, Pause, Stop, Next
-- Progress bar with step indicator
-
-**Sequence Editor Modal**:
-- Sequence name input
-- Loop and Shuffle checkboxes
-- Step list with drag-and-drop reordering
-- Per-step settings: effect, duration, transition type, transition duration
-
-### Usage
-
-1. Click "+" to create a new sequence
-2. In the editor, add steps by clicking "+" next to "Steps"
-3. For each step, select an effect and set duration
-4. Choose transition type (instant, fade in, fade out, crossfade)
-5. Enable loop/shuffle options as desired
-6. Click Save
-7. Select the sequence and click Play
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `js/core/effectSequencer.js` | Core engine with timer, transitions, playback control |
-| `js/managers/sequenceManager.js` | UI manager for sequence panel |
-| `js/components/sequenceEditorModal.js` | Modal for editing sequences |
-| `js/core/stateStore.js` | Extended with sequence CRUD and playback state |
-| `js/core/eventBus.js` | Extended with sequence/playback events |
-| `css/index.css` | Styles for sequence panel and editor modal |
-| `EffectEditor.html` | Sequence panel HTML added to aside |
+### `AmazonEcho_Support`
+Current firmware branch with Alexa/Hue Bridge integration.
