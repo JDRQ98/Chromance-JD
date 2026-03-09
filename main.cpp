@@ -79,9 +79,10 @@ void loop()
   {
     xSemaphoreTake(gParamsMutex, portMAX_DELAY);
 
-    /* Snapshot mode once so the rendering and event-scheduling gates
-       always agree within the same loop iteration. */
-    bool stableColorMode = GlobalParameters.StableColorMode;
+    /* Snapshot mode and master-enable once so rendering and event-scheduling
+       gates always agree within the same loop iteration. */
+    bool stableColorMode      = GlobalParameters.StableColorMode;
+    bool masterFireEnabled    = GlobalParameters.MasterFireRippleEnabled;
 
     /* Execute any ripple kill deferred by the HTTP/Alexa handler.
        -2 = kill all ripples; >= 0 = kill specific profile. */
@@ -267,7 +268,11 @@ void loop()
     /* Render after releasing the mutex so HTTP handlers aren't blocked
        during the strip clear/set/show cycle. */
     if (stableColorMode) {
-      StableColor_MainFunction();
+      if (masterFireEnabled) {
+        StableColor_MainFunction();
+      } else {
+        for (int s = 0; s < NUMBER_OF_STRIPS; s++) { strips[s].clear(); strips[s].show(); }
+      }
     } else {
       Ripple_MainFunction();
     }

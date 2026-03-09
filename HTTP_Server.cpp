@@ -118,121 +118,136 @@ static void setupDefaultStableColorParameters(void) {
   memset(GlobalParameters.StableColorSegments, true, NUMBER_OF_SEGMENTS);
 }
 
+/* Helper to escape strings so they don't break JSON parsing */
+static String escapeJSON(const char* input) {
+  String output = "";
+  if (!input) return output;
+  for (int i = 0; input[i] != '\0' && i < 64; i++) {
+    char c = input[i];
+    if (c == '"') output += "\\\"";
+    else if (c == '\\') output += "\\\\";
+    else if (c == '\b') output += "\\b";
+    else if (c == '\f') output += "\\f";
+    else if (c == '\n') output += "\\n";
+    else if (c == '\r') output += "\\r";
+    else if (c == '\t') output += "\\t";
+    else if (c >= 0 && c < 32) {
+      char buf[8];
+      sprintf(buf, "\\u%04x", c);
+      output += buf;
+    } else {
+      output += c;
+    }
+  }
+  return output;
+}
+
 /* HANDLER FUNCTIONS */
 void handle_getCurrentProfiles(AsyncWebServerRequest *request) {
   udp_printf("Received getCurrentProfiles request");
 
-  String response = "{\n";
-  response += "\"MasterFireRippleEnabled\": " + String(GlobalParameters.MasterFireRippleEnabled) + ",\n";
-  response += "\"Decay\": " + String(GlobalParameters.Decay) + ",\n";
-  response += "\"Brightness\": " + String(GlobalParameters.Brightness) + ",\n";
-  response += "\"NumberOfActiveProfiles\": " + String(GlobalParameters.NumberOfActiveProfiles) + ",\n";
-  response += "\"SequencerEnabled\": " + String(GlobalParameters.SequencerEnabled ? "true" : "false") + ",\n";
-  response += "\"SequencerMode\": " + String(GlobalParameters.SequencerMode) + ",\n";
-  response += "\"SequencerDwellTime_s\": " + String(GlobalParameters.SequencerDwellTime_s) + ",\n";
-  response += "\"SequencerCurrentProfile\": " + String(GlobalParameters.SequencerCurrentProfile) + ",\n";
-  response += "\"GlobalBPM\": " + String(GlobalParameters.GlobalBPM, 1) + ",\n";
+  /* Use AsyncResponseStream so large payloads are chunked automatically
+     instead of being built into a single heap-allocated String. */
+  AsyncResponseStream *r = request->beginResponseStream("application/json");
+  char buf[64];
+
+  r->print("{\n");
+  r->print("\"MasterFireRippleEnabled\": " + String(GlobalParameters.MasterFireRippleEnabled) + ",\n");
+  r->print("\"Decay\": " + String(GlobalParameters.Decay) + ",\n");
+  r->print("\"Brightness\": " + String(GlobalParameters.Brightness) + ",\n");
+  r->print("\"NumberOfActiveProfiles\": " + String(GlobalParameters.NumberOfActiveProfiles) + ",\n");
+  r->print("\"SequencerEnabled\": " + String(GlobalParameters.SequencerEnabled ? "true" : "false") + ",\n");
+  r->print("\"SequencerMode\": " + String(GlobalParameters.SequencerMode) + ",\n");
+  r->print("\"SequencerDwellTime_s\": " + String(GlobalParameters.SequencerDwellTime_s) + ",\n");
+  r->print("\"SequencerCurrentProfile\": " + String(GlobalParameters.SequencerCurrentProfile) + ",\n");
+  r->print("\"GlobalBPM\": " + String(GlobalParameters.GlobalBPM, 1) + ",\n");
   /* Stable color mode fields */
-  response += "\"StableColorMode\": " + String(GlobalParameters.StableColorMode ? "true" : "false") + ",\n";
-  {
-    char scHexStr[12];
-    sprintf(scHexStr, "\"#%06X\"", hue16ToRgbHex(GlobalParameters.StableColorHue));
-    response += "\"StableColorHue\": " + String(scHexStr) + ",\n";
-  }
-  response += "\"PulseFrequency\": " + String(GlobalParameters.PulseFrequency, 2) + ",\n";
-  response += "\"PulseDepth\": " + String(GlobalParameters.PulseDepth, 2) + ",\n";
-  response += "\"StableColorSegments\": [";
+  r->print("\"StableColorMode\": " + String(GlobalParameters.StableColorMode ? "true" : "false") + ",\n");
+  snprintf(buf, sizeof(buf), "\"StableColorHue\": \"#%06X\",\n", hue16ToRgbHex(GlobalParameters.StableColorHue));
+  r->print(buf);
+  r->print("\"PulseFrequency\": " + String(GlobalParameters.PulseFrequency, 2) + ",\n");
+  r->print("\"PulseDepth\": " + String(GlobalParameters.PulseDepth, 2) + ",\n");
+  r->print("\"StableColorSegments\": [");
   for (int i = 0; i < NUMBER_OF_SEGMENTS; i++) {
-    response += String(GlobalParameters.StableColorSegments[i] ? 1 : 0);
-    if (i < NUMBER_OF_SEGMENTS - 1) response += ",";
+    r->print(GlobalParameters.StableColorSegments[i] ? "1" : "0");
+    if (i < NUMBER_OF_SEGMENTS - 1) r->print(",");
   }
-  response += "],\n";
+  r->print("],\n");
   /* Stable Color Sequencer fields */
-  response += "\"SCSeqEnabled\": " + String(GlobalParameters.SCSeqEnabled ? "true" : "false") + ",\n";
-  response += "\"SCSeqMode\": " + String(GlobalParameters.SCSeqMode) + ",\n";
-  response += "\"SCSeqTimingMode\": " + String(GlobalParameters.SCSeqTimingMode) + ",\n";
-  response += "\"SCSeqDwellTime_s\": " + String(GlobalParameters.SCSeqDwellTime_s, 1) + ",\n";
-  response += "\"SCSeqBeatsPerSwitch\": " + String(GlobalParameters.SCSeqBeatsPerSwitch, 2) + ",\n";
-  response += "\"SCSeqFPS\": " + String(GlobalParameters.SCSeqFPS) + ",\n";
-  response += "\"SCSeqCycleColors\": " + String(GlobalParameters.SCSeqCycleColors ? "true" : "false") + ",\n";
-  response += "\"SCSeqFadeEnabled\": " + String(GlobalParameters.SCSeqFadeEnabled ? "true" : "false") + ",\n";
-  response += "\"SCSeqFadeOuter\": " + String(GlobalParameters.SCSeqFadeOuter ? "true" : "false") + ",\n";
-  response += "\"SCSeqFadeInner\": " + String(GlobalParameters.SCSeqFadeInner ? "true" : "false") + ",\n";
-  response += "\"SCSeqFadeDuration_ms\": " + String(GlobalParameters.SCSeqFadeDuration_ms) + ",\n";
-  response += "\"SCSeqCurrentPreset\": " + String(GlobalParameters.SCSeqCurrentPreset) + ",\n";
-  response += "\"NumberOfSCPresets\": " + String(GlobalParameters.NumberOfSCPresets) + ",\n";
-  response += "\"SCPresets\": [\n";
-  for(int i = 0; i < NUMBER_OF_SC_PRESETS; i++){
-    char scpHex[12];
-    sprintf(scpHex, "\"#%06X\"", hue16ToRgbHex(GlobalParameters.SCPresets[i].Hue));
-    response += "  {";
-    response += "\"Active\":" + String(GlobalParameters.SCPresets[i].Active ? "true" : "false") + ",";
-    response += "\"PresetName\":\"" + String(GlobalParameters.SCPresets[i].PresetName) + "\",";
-    response += "\"Hue\":" + String(scpHex) + ",";
-    response += "\"Segments\":[";
-    for(int j = 0; j < NUMBER_OF_SEGMENTS; j++){
-      response += String(GlobalParameters.SCPresets[i].Segments[j] ? 1 : 0);
-      if(j < NUMBER_OF_SEGMENTS - 1) response += ",";
+  r->print("\"SCSeqEnabled\": " + String(GlobalParameters.SCSeqEnabled ? "true" : "false") + ",\n");
+  r->print("\"SCSeqMode\": " + String(GlobalParameters.SCSeqMode) + ",\n");
+  r->print("\"SCSeqTimingMode\": " + String(GlobalParameters.SCSeqTimingMode) + ",\n");
+  r->print("\"SCSeqDwellTime_s\": " + String(GlobalParameters.SCSeqDwellTime_s, 1) + ",\n");
+  r->print("\"SCSeqBeatsPerSwitch\": " + String(GlobalParameters.SCSeqBeatsPerSwitch, 2) + ",\n");
+  r->print("\"SCSeqFPS\": " + String(GlobalParameters.SCSeqFPS) + ",\n");
+  r->print("\"SCSeqCycleColors\": " + String(GlobalParameters.SCSeqCycleColors ? "true" : "false") + ",\n");
+  r->print("\"SCSeqFadeEnabled\": " + String(GlobalParameters.SCSeqFadeEnabled ? "true" : "false") + ",\n");
+  r->print("\"SCSeqFadeOuter\": " + String(GlobalParameters.SCSeqFadeOuter ? "true" : "false") + ",\n");
+  r->print("\"SCSeqFadeInner\": " + String(GlobalParameters.SCSeqFadeInner ? "true" : "false") + ",\n");
+  r->print("\"SCSeqFadeDuration_ms\": " + String(GlobalParameters.SCSeqFadeDuration_ms) + ",\n");
+  r->print("\"SCSeqCurrentPreset\": " + String(GlobalParameters.SCSeqCurrentPreset) + ",\n");
+  r->print("\"NumberOfSCPresets\": " + String(GlobalParameters.NumberOfSCPresets) + ",\n");
+  /* Only send active preset slots — JS uses NumberOfSCPresets to know the count */
+  r->print("\"SCPresets\": [\n");
+  for (int i = 0; i < GlobalParameters.NumberOfSCPresets; i++) {
+    snprintf(buf, sizeof(buf), "\"#%06X\"", hue16ToRgbHex(GlobalParameters.SCPresets[i].Hue));
+    r->print("  {");
+    r->print("\"Active\":" + String(GlobalParameters.SCPresets[i].Active ? "true" : "false") + ",");
+    r->print("\"PresetName\":\"" + escapeJSON(GlobalParameters.SCPresets[i].PresetName) + "\",");
+    r->print("\"Hue\":" + String(buf) + ",");
+    r->print("\"Segments\":[");
+    for (int j = 0; j < NUMBER_OF_SEGMENTS; j++) {
+      r->print(GlobalParameters.SCPresets[i].Segments[j] ? "1" : "0");
+      if (j < NUMBER_OF_SEGMENTS - 1) r->print(",");
     }
-    response += "]}";
-    if(i < NUMBER_OF_SC_PRESETS - 1) response += ",";
-    response += "\n";
+    r->print("]}");
+    if (i < GlobalParameters.NumberOfSCPresets - 1) r->print(",");
+    r->print("\n");
   }
-  response += "],\n";
-  response += "\"Profiles\": [\n"; 
-  for(int i = 0; i < GlobalParameters.NumberOfActiveProfiles; i++){
-    response += "  {\n";
-    response += "    \"ProfileIndex\": " + String(i) + ",\n";
-    response += "    \"ProfileName\": \"" + String(GlobalParameters.RippleProfiles[i].ProfileName) + "\",\n";
-    response += "    \"Active\": " + String(GlobalParameters.RippleProfiles[i].Active) + ",\n";
-    response += "    \"ProfilePeriod_ms\": " + String(GlobalParameters.RippleProfiles[i].ProfilePeriod_ms) + ",\n";
-    response += "    \"NumberOfColors\": " + String(GlobalParameters.RippleProfiles[i].NumberOfColors) + ",\n";
-    response += "    \"Colors\": [";
-    for(int k = 0; k < GlobalParameters.RippleProfiles[i].NumberOfColors; k++){
-      char colorString[12];
-      unsigned int rgbColor = hue16ToRgbHex(GlobalParameters.RippleProfiles[i].Colors[k]);
-      sprintf(colorString, "\"#%06X\"", rgbColor);
-      response += String(colorString);
-      if(k < GlobalParameters.RippleProfiles[i].NumberOfColors - 1){
-        response += ", ";
-      }
+  r->print("],\n");
+  r->print("\"Profiles\": [\n");
+  for (int i = 0; i < (int)GlobalParameters.NumberOfActiveProfiles; i++) {
+    r->print("  {\n");
+    r->print("    \"ProfileIndex\": " + String(i) + ",\n");
+    r->print("    \"ProfileName\": \"" + escapeJSON(GlobalParameters.RippleProfiles[i].ProfileName) + "\",\n");
+    r->print("    \"Active\": " + String(GlobalParameters.RippleProfiles[i].Active) + ",\n");
+    r->print("    \"ProfilePeriod_ms\": " + String(GlobalParameters.RippleProfiles[i].ProfilePeriod_ms) + ",\n");
+    r->print("    \"NumberOfColors\": " + String(GlobalParameters.RippleProfiles[i].NumberOfColors) + ",\n");
+    r->print("    \"Colors\": [");
+    for (int k = 0; k < (int)GlobalParameters.RippleProfiles[i].NumberOfColors; k++) {
+      snprintf(buf, sizeof(buf), "\"#%06X\"", hue16ToRgbHex(GlobalParameters.RippleProfiles[i].Colors[k]));
+      r->print(buf);
+      if (k < (int)GlobalParameters.RippleProfiles[i].NumberOfColors - 1) r->print(",");
     }
-    response += "],\n";
-    response += "    \"Events\": [\n";
-    for(int e = 0; e < MAX_EVENTS_PER_PROFILE; e++){
+    r->print("],\n");
+    r->print("    \"Events\": [\n");
+    for (int e = 0; e < MAX_EVENTS_PER_PROFILE; e++) {
       TimeEvent_struct* evt = &GlobalParameters.RippleProfiles[i].Events[e];
-      response += "      {";
-      response += "\"Enabled\":" + String(evt->Enabled ? "true" : "false") + ",";
-      response += "\"TimeOffset_ms\":" + String(evt->TimeOffset_ms) + ",";
-      response += "\"RippleLifeSpan\":" + String(evt->RippleLifeSpan) + ",";
-      response += "\"RippleType\":" + String(evt->RippleType) + ",";
-      response += "\"Behavior\":" + String(evt->Behavior) + ",";
-      response += "\"RippleSpeed\":" + String(evt->RippleSpeed) + ",";
-      response += "\"RainbowDeltaPerTick\":" + String(evt->RainbowDeltaPerTick) + ",";
-      response += "\"Direction\":" + String(evt->Direction) + ",";
-      response += "\"ActiveNodes\":[";
-      for(int j = 0; j < NUMBER_OF_NODES; j++){
-        response += String(evt->ActiveNodes[j]);
-        if(j < NUMBER_OF_NODES - 1) response += ",";
+      r->print("      {");
+      r->print("\"Enabled\":" + String(evt->Enabled ? "true" : "false") + ",");
+      r->print("\"TimeOffset_ms\":" + String(evt->TimeOffset_ms) + ",");
+      r->print("\"RippleLifeSpan\":" + String(evt->RippleLifeSpan) + ",");
+      r->print("\"RippleType\":" + String(evt->RippleType) + ",");
+      r->print("\"Behavior\":" + String(evt->Behavior) + ",");
+      r->print("\"RippleSpeed\":" + String(evt->RippleSpeed) + ",");
+      r->print("\"RainbowDeltaPerTick\":" + String(evt->RainbowDeltaPerTick) + ",");
+      r->print("\"Direction\":" + String(evt->Direction) + ",");
+      r->print("\"ActiveNodes\":[");
+      for (int j = 0; j < NUMBER_OF_NODES; j++) {
+        r->print(evt->ActiveNodes[j] ? "1" : "0");
+        if (j < NUMBER_OF_NODES - 1) r->print(",");
       }
-      response += "]}";
-      if(e < MAX_EVENTS_PER_PROFILE - 1) response += ",";
-      response += "\n";
+      r->print("]}");
+      if (e < MAX_EVENTS_PER_PROFILE - 1) r->print(",");
+      r->print("\n");
     }
-    response += "    ]\n";
-    response += "  }";
-    if(i < GlobalParameters.NumberOfActiveProfiles - 1){
-      response += ",\n";
-    } else {
-      response += "\n";
-    }
+    r->print("    ]\n");
+    r->print("  }");
+    r->print(i < (int)GlobalParameters.NumberOfActiveProfiles - 1 ? ",\n" : "\n");
   }
-  response += "]\n";
-  response += "}\n";
+  r->print("]\n}\n");
 
-  udp_printf("handle_getCurrentProfiles response: %s", response.c_str());
-
-  request->send(200, "application/json", response);
+  request->send(r);
 }
 
 
@@ -461,8 +476,9 @@ void handle_UpdateGlobalParameters(AsyncWebServerRequest* request, uint8_t* data
         if (newMode && !GlobalParameters.StableColorMode) {
             /* Entering stable mode from ripple: kill all ripples */
             pendingKillProfileIndex = -2;
-            GlobalParameters.MasterFireRippleEnabled = false;
         }
+        /* Always re-enable on any mode switch so the output is live */
+        GlobalParameters.MasterFireRippleEnabled = true;
         GlobalParameters.StableColorMode = newMode;
         udp_printf(" - Updated StableColorMode to %d", GlobalParameters.StableColorMode);
     }
