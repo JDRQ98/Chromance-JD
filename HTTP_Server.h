@@ -10,6 +10,7 @@
 
 /* DEFINES for variable management */
 #define NUMBER_OF_PROFILES 10U
+#define NUMBER_OF_SC_PRESETS 8U
 #define MAX_PROFILE_NAME_LEN 32U
 
 #define BEHAVIOR_DEFAULT feisty
@@ -54,6 +55,14 @@
 #define SEQUENCER_DWELL_DEFAULT  30U
 #define SEQUENCER_DWELL_MAX      120U
 
+#define SC_DWELL_MIN_S     0.5f
+#define SC_DWELL_DEFAULT_S 30.0f
+#define SC_DWELL_MAX_S     120.0f
+#define SC_FPS_DEFAULT     12U
+#define SC_FADE_MIN_MS     5U
+#define SC_FADE_DEFAULT_MS 300U
+#define SC_FADE_MAX_MS     2000U
+
 #define BPM_MIN       40.0f
 #define BPM_DEFAULT   120.0f
 #define BPM_MAX       300.0f
@@ -95,6 +104,13 @@ typedef struct {
 
 /* Variables used for control over web server */
 typedef struct {
+  boolean Active;
+  char PresetName[32];
+  unsigned int Hue;                         /* 16-bit HSV hue, applied when SCSeqCycleColors=true */
+  boolean Segments[NUMBER_OF_SEGMENTS];     /* which of the 30 segments to illuminate */
+} StableColorPreset_struct;
+
+typedef struct {
   boolean MasterFireRippleEnabled;
   float Decay; /* decay per tick, global for now TODO: make decay a ripple/profile property */
   unsigned char Brightness; /* LED brightness 0-255 */
@@ -114,6 +130,28 @@ typedef struct {
   float PulseFrequency;                 /* Pulse Hz (0.1–5.0), default 0.3 */
   float PulseDepth;                     /* Pulse amplitude (0.0–1.0), default 0.4 */
   boolean StableColorSegments[NUMBER_OF_SEGMENTS]; /* Which of the 30 segments to illuminate */
+
+  /* Stable Color Sequencer */
+  boolean SCSeqEnabled;                     /* Is SC sequencer running? */
+  unsigned char SCSeqMode;                  /* 0=sequential, 1=random */
+  unsigned char SCSeqTimingMode;            /* 0=time, 1=beat, 2=fps */
+  float SCSeqDwellTime_s;                   /* time mode: seconds per preset (0.5-120) */
+  float SCSeqBeatsPerSwitch;                /* beat mode: beats per switch (0.25/0.5/1/2/4/8/16) */
+  unsigned char SCSeqFPS;                   /* fps mode: frames per second (1-24) */
+  boolean SCSeqCycleColors;                 /* true = apply preset Hue on switch */
+  boolean SCSeqFadeEnabled;                 /* true = fade transition between presets */
+  boolean SCSeqFadeOuter;                   /* true = fade the 12 outer-ring segments */
+  boolean SCSeqFadeInner;                   /* true = fade the 18 inner segments */
+  unsigned short SCSeqFadeDuration_ms;      /* per-half fade duration (50-2000 ms) */
+  unsigned char SCSeqCurrentPreset;         /* which preset index is playing now */
+  unsigned long SCSeqLastSwitch_ms;         /* runtime: millis() of last switch */
+  unsigned char NumberOfSCPresets;          /* count of active presets (1-8) */
+  /* runtime fade state (reset on boot) */
+  float SCSeqFadeMultiplier;                /* 0.0-1.0 brightness scale during fade */
+  unsigned char SCSeqFadePhase;             /* 0=none, 1=fading out, 2=fading in */
+  unsigned long SCSeqFadePhaseStart_ms;     /* millis() when current fade phase started */
+  unsigned char SCSeqFadeTargetPreset;      /* preset to switch to when fade-out completes */
+  StableColorPreset_struct SCPresets[NUMBER_OF_SC_PRESETS];
 } GlobalParameters_struct;
 
 

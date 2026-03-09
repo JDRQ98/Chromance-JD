@@ -147,6 +147,38 @@ void handle_getCurrentProfiles(AsyncWebServerRequest *request) {
     if (i < NUMBER_OF_SEGMENTS - 1) response += ",";
   }
   response += "],\n";
+  /* Stable Color Sequencer fields */
+  response += "\"SCSeqEnabled\": " + String(GlobalParameters.SCSeqEnabled ? "true" : "false") + ",\n";
+  response += "\"SCSeqMode\": " + String(GlobalParameters.SCSeqMode) + ",\n";
+  response += "\"SCSeqTimingMode\": " + String(GlobalParameters.SCSeqTimingMode) + ",\n";
+  response += "\"SCSeqDwellTime_s\": " + String(GlobalParameters.SCSeqDwellTime_s, 1) + ",\n";
+  response += "\"SCSeqBeatsPerSwitch\": " + String(GlobalParameters.SCSeqBeatsPerSwitch, 2) + ",\n";
+  response += "\"SCSeqFPS\": " + String(GlobalParameters.SCSeqFPS) + ",\n";
+  response += "\"SCSeqCycleColors\": " + String(GlobalParameters.SCSeqCycleColors ? "true" : "false") + ",\n";
+  response += "\"SCSeqFadeEnabled\": " + String(GlobalParameters.SCSeqFadeEnabled ? "true" : "false") + ",\n";
+  response += "\"SCSeqFadeOuter\": " + String(GlobalParameters.SCSeqFadeOuter ? "true" : "false") + ",\n";
+  response += "\"SCSeqFadeInner\": " + String(GlobalParameters.SCSeqFadeInner ? "true" : "false") + ",\n";
+  response += "\"SCSeqFadeDuration_ms\": " + String(GlobalParameters.SCSeqFadeDuration_ms) + ",\n";
+  response += "\"SCSeqCurrentPreset\": " + String(GlobalParameters.SCSeqCurrentPreset) + ",\n";
+  response += "\"NumberOfSCPresets\": " + String(GlobalParameters.NumberOfSCPresets) + ",\n";
+  response += "\"SCPresets\": [\n";
+  for(int i = 0; i < NUMBER_OF_SC_PRESETS; i++){
+    char scpHex[12];
+    sprintf(scpHex, "\"#%06X\"", hue16ToRgbHex(GlobalParameters.SCPresets[i].Hue));
+    response += "  {";
+    response += "\"Active\":" + String(GlobalParameters.SCPresets[i].Active ? "true" : "false") + ",";
+    response += "\"PresetName\":\"" + String(GlobalParameters.SCPresets[i].PresetName) + "\",";
+    response += "\"Hue\":" + String(scpHex) + ",";
+    response += "\"Segments\":[";
+    for(int j = 0; j < NUMBER_OF_SEGMENTS; j++){
+      response += String(GlobalParameters.SCPresets[i].Segments[j] ? 1 : 0);
+      if(j < NUMBER_OF_SEGMENTS - 1) response += ",";
+    }
+    response += "]}";
+    if(i < NUMBER_OF_SC_PRESETS - 1) response += ",";
+    response += "\n";
+  }
+  response += "],\n";
   response += "\"Profiles\": [\n"; 
   for(int i = 0; i < GlobalParameters.NumberOfActiveProfiles; i++){
     response += "  {\n";
@@ -459,6 +491,58 @@ void handle_UpdateGlobalParameters(AsyncWebServerRequest* request, uint8_t* data
         }
         udp_printf(" - Updated StableColorSegments");
     }
+    if (bodyJSON.containsKey("SCSeqEnabled")) {
+        GlobalParameters.SCSeqEnabled = bodyJSON["SCSeqEnabled"].as<bool>();
+        udp_printf(" - Updated SCSeqEnabled to %d", GlobalParameters.SCSeqEnabled);
+    }
+    if (bodyJSON.containsKey("SCSeqMode")) {
+        GlobalParameters.SCSeqMode = (unsigned char)bodyJSON["SCSeqMode"].as<int>();
+        udp_printf(" - Updated SCSeqMode to %d", GlobalParameters.SCSeqMode);
+    }
+    if (bodyJSON.containsKey("SCSeqTimingMode")) {
+        GlobalParameters.SCSeqTimingMode = (unsigned char)constrain(bodyJSON["SCSeqTimingMode"].as<int>(), 0, 2);
+        udp_printf(" - Updated SCSeqTimingMode to %d", GlobalParameters.SCSeqTimingMode);
+    }
+    if (bodyJSON.containsKey("SCSeqDwellTime_s")) {
+        float d = bodyJSON["SCSeqDwellTime_s"].as<float>();
+        GlobalParameters.SCSeqDwellTime_s = constrain(d, SC_DWELL_MIN_S, SC_DWELL_MAX_S);
+        udp_printf(" - Updated SCSeqDwellTime_s to %.1f", GlobalParameters.SCSeqDwellTime_s);
+    }
+    if (bodyJSON.containsKey("SCSeqBeatsPerSwitch")) {
+        GlobalParameters.SCSeqBeatsPerSwitch = bodyJSON["SCSeqBeatsPerSwitch"].as<float>();
+        udp_printf(" - Updated SCSeqBeatsPerSwitch to %.2f", GlobalParameters.SCSeqBeatsPerSwitch);
+    }
+    if (bodyJSON.containsKey("SCSeqFPS")) {
+        int fps = bodyJSON["SCSeqFPS"].as<int>();
+        GlobalParameters.SCSeqFPS = (unsigned char)constrain(fps, 1, 60);
+        udp_printf(" - Updated SCSeqFPS to %d", GlobalParameters.SCSeqFPS);
+    }
+    if (bodyJSON.containsKey("SCSeqCycleColors")) {
+        GlobalParameters.SCSeqCycleColors = bodyJSON["SCSeqCycleColors"].as<bool>();
+        udp_printf(" - Updated SCSeqCycleColors to %d", GlobalParameters.SCSeqCycleColors);
+    }
+    if (bodyJSON.containsKey("SCSeqFadeEnabled")) {
+        GlobalParameters.SCSeqFadeEnabled = bodyJSON["SCSeqFadeEnabled"].as<bool>();
+        udp_printf(" - Updated SCSeqFadeEnabled to %d", GlobalParameters.SCSeqFadeEnabled);
+    }
+    if (bodyJSON.containsKey("SCSeqFadeOuter")) {
+        GlobalParameters.SCSeqFadeOuter = bodyJSON["SCSeqFadeOuter"].as<bool>();
+        udp_printf(" - Updated SCSeqFadeOuter to %d", GlobalParameters.SCSeqFadeOuter);
+    }
+    if (bodyJSON.containsKey("SCSeqFadeInner")) {
+        GlobalParameters.SCSeqFadeInner = bodyJSON["SCSeqFadeInner"].as<bool>();
+        udp_printf(" - Updated SCSeqFadeInner to %d", GlobalParameters.SCSeqFadeInner);
+    }
+    if (bodyJSON.containsKey("SCSeqFadeDuration_ms")) {
+        int fd = bodyJSON["SCSeqFadeDuration_ms"].as<int>();
+        GlobalParameters.SCSeqFadeDuration_ms = (unsigned short)constrain(fd, SC_FADE_MIN_MS, SC_FADE_MAX_MS);
+        udp_printf(" - Updated SCSeqFadeDuration_ms to %d", GlobalParameters.SCSeqFadeDuration_ms);
+    }
+    if (bodyJSON.containsKey("NumberOfSCPresets")) {
+        int n = bodyJSON["NumberOfSCPresets"].as<int>();
+        GlobalParameters.NumberOfSCPresets = (unsigned char)constrain(n, 1, NUMBER_OF_SC_PRESETS);
+        udp_printf(" - Updated NumberOfSCPresets to %d", GlobalParameters.NumberOfSCPresets);
+    }
 
     xSemaphoreGive(gParamsMutex);
     EEPROM_MarkDirty(); // schedule debounced save to persist global parameter changes
@@ -487,6 +571,45 @@ void handle_MasterFireRippleEnabled_Off(AsyncWebServerRequest *request) {
 }
 /* end of checkbox handling*/
 
+void handle_UpdateStableColorPreset(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+    String body = String((const char*)data, len);
+    udp_printf("Received updateStableColorPreset: %s", body.c_str());
+
+    JsonDocument bodyJSON;
+    DeserializationError error = deserializeJson(bodyJSON, body);
+    if (error) {
+        request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+
+    int idx = bodyJSON["index"].as<int>();
+    if (idx < 0 || idx >= NUMBER_OF_SC_PRESETS) {
+        request->send(400, "application/json", "{\"error\":\"invalid index\"}");
+        return;
+    }
+
+    xSemaphoreTake(gParamsMutex, portMAX_DELAY);
+    StableColorPreset_struct* p = &GlobalParameters.SCPresets[idx];
+
+    if (bodyJSON.containsKey("Active"))
+        p->Active = bodyJSON["Active"].as<bool>();
+    if (bodyJSON.containsKey("PresetName"))
+        strncpy(p->PresetName, bodyJSON["PresetName"].as<const char*>(), sizeof(p->PresetName) - 1);
+    if (bodyJSON.containsKey("Hue")) {
+        const char* c = bodyJSON["Hue"].as<const char*>();
+        if (c && c[0] == '#')
+            p->Hue = rgbHexToHue16((unsigned int)strtol(c + 1, NULL, 16));
+    }
+    if (bodyJSON.containsKey("Segments")) {
+        JsonArray segs = bodyJSON["Segments"].as<JsonArray>();
+        for (int i = 0; i < NUMBER_OF_SEGMENTS && i < (int)segs.size(); i++)
+            p->Segments[i] = segs[i].as<bool>();
+    }
+    xSemaphoreGive(gParamsMutex);
+    EEPROM_MarkDirty();
+    request->send(200, "application/json", "{}");
+}
+
 /* to be called once at startup */
 void HTTP_backend_init(void){
   gParamsMutex = xSemaphoreCreateMutex();
@@ -498,6 +621,7 @@ void HTTP_backend_init(void){
   server.on("/getCurrentProfiles", handle_getCurrentProfiles); 
   server.on("/updateProfile", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, handle_UpdateProfile);
   server.on("/updateGlobalParameters", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, handle_UpdateGlobalParameters);
+  server.on("/updateStableColorPreset", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, handle_UpdateStableColorPreset);
   server.on("/resetMicrocontroller", HTTP_GET, [](AsyncWebServerRequest *request)
             {
               udp_printf("Received resetMicrocontroller request via HTTP");

@@ -47,8 +47,12 @@ void setup()
     strips[i].setBrightness(GlobalParameters.Brightness);
   }
 
-  // Reset sequencer timestamp so stale EEPROM value doesn't cause immediate switch
+  // Reset sequencer timestamps so stale EEPROM values don't cause immediate switches
   GlobalParameters.SequencerLastSwitch_ms = millis();
+  GlobalParameters.SCSeqLastSwitch_ms     = millis();
+  // Reset runtime-only fade state
+  GlobalParameters.SCSeqFadePhase         = 0;
+  GlobalParameters.SCSeqFadeMultiplier    = 1.0f;
 
   // Initialize period start times for all profiles
   for(int i = 0; i < NUMBER_OF_PROFILES; i++){
@@ -109,6 +113,87 @@ void loop()
         udp_printf("Sequencer: switched to profile %d \"%s\"",
           GlobalParameters.SequencerCurrentProfile,
           GlobalParameters.RippleProfiles[GlobalParameters.SequencerCurrentProfile].ProfileName);
+      }
+    }
+
+    /* Stable Color Sequencer */
+    if(stableColorMode && GlobalParameters.SCSeqEnabled && GlobalParameters.NumberOfSCPresets > 1){
+      /* Compute dwell period in ms from timing mode */
+      unsigned long scDwellMs;
+      switch(GlobalParameters.SCSeqTimingMode){
+        case 1: /* pulse-synced: 1 "beat" = 1 pulse cycle (1/PulseFrequency seconds) */
+          scDwellMs = (GlobalParameters.PulseFrequency > 0.0f)
+            ? (unsigned long)((1000.0f / GlobalParameters.PulseFrequency) * GlobalParameters.SCSeqBeatsPerSwitch)
+            : (unsigned long)(GlobalParameters.SCSeqDwellTime_s * 1000.0f);
+          break;
+        case 2: /* fps-based */
+          scDwellMs = (GlobalParameters.SCSeqFPS > 0) ? (1000UL / GlobalParameters.SCSeqFPS) : 83UL;
+          break;
+        default: /* time-based */
+          scDwellMs = (unsigned long)(GlobalParameters.SCSeqDwellTime_s * 1000.0f);
+          break;
+      }
+
+      /* Update fade state */
+      if(GlobalParameters.SCSeqFadePhase == 1){
+        /* Fading out: decrease multiplier toward 0 */
+        float fadeDurMs = (float)GlobalParameters.SCSeqFadeDuration_ms;
+        unsigned long elapsed = currentTime_ms - GlobalParameters.SCSeqFadePhaseStart_ms;
+        GlobalParameters.SCSeqFadeMultiplier = (fadeDurMs > 0.0f)
+            ? 1.0f - (float)elapsed / fadeDurMs : 0.0f;
+        if(GlobalParameters.SCSeqFadeMultiplier <= 0.0f){
+          GlobalParameters.SCSeqFadeMultiplier = 0.0f;
+          /* Apply the pending preset and start fade-in */
+          unsigned char tgt = GlobalParameters.SCSeqFadeTargetPreset;
+          GlobalParameters.SCSeqCurrentPreset = tgt;
+          memcpy(GlobalParameters.StableColorSegments, GlobalParameters.SCPresets[tgt].Segments, NUMBER_OF_SEGMENTS);
+          if(GlobalParameters.SCSeqCycleColors)
+            GlobalParameters.StableColorHue = GlobalParameters.SCPresets[tgt].Hue;
+          EEPROM_MarkDirty();
+          GlobalParameters.SCSeqFadePhase = 2;
+          GlobalParameters.SCSeqFadePhaseStart_ms = currentTime_ms;
+        }
+      } else if(GlobalParameters.SCSeqFadePhase == 2){
+        /* Fading in: increase multiplier toward 1 */
+        float fadeDurMs = (float)GlobalParameters.SCSeqFadeDuration_ms;
+        unsigned long elapsed = currentTime_ms - GlobalParameters.SCSeqFadePhaseStart_ms;
+        GlobalParameters.SCSeqFadeMultiplier = (fadeDurMs > 0.0f)
+            ? (float)elapsed / fadeDurMs : 1.0f;
+        if(GlobalParameters.SCSeqFadeMultiplier >= 1.0f){
+          GlobalParameters.SCSeqFadeMultiplier = 1.0f;
+          GlobalParameters.SCSeqFadePhase = 0;
+        }
+      }
+
+      /* Advance to next preset when dwell elapses (only when not fading) */
+      if(GlobalParameters.SCSeqFadePhase == 0 &&
+         currentTime_ms - GlobalParameters.SCSeqLastSwitch_ms >= scDwellMs){
+        GlobalParameters.SCSeqLastSwitch_ms = currentTime_ms;
+
+        unsigned char next;
+        if(GlobalParameters.SCSeqMode == 0){
+          next = GlobalParameters.SCSeqCurrentPreset + 1;
+          if(next >= GlobalParameters.NumberOfSCPresets) next = 0;
+        } else {
+          do { next = random(GlobalParameters.NumberOfSCPresets); }
+          while(next == GlobalParameters.SCSeqCurrentPreset && GlobalParameters.NumberOfSCPresets > 1);
+        }
+
+        if(GlobalParameters.SCSeqFadeEnabled && GlobalParameters.SCSeqFadeDuration_ms > 0){
+          /* Begin fade-out toward the new preset */
+          GlobalParameters.SCSeqFadeTargetPreset  = next;
+          GlobalParameters.SCSeqFadePhase         = 1;
+          GlobalParameters.SCSeqFadePhaseStart_ms = currentTime_ms;
+          GlobalParameters.SCSeqFadeMultiplier    = 1.0f;
+        } else {
+          /* Immediate switch */
+          GlobalParameters.SCSeqCurrentPreset = next;
+          memcpy(GlobalParameters.StableColorSegments, GlobalParameters.SCPresets[next].Segments, NUMBER_OF_SEGMENTS);
+          if(GlobalParameters.SCSeqCycleColors)
+            GlobalParameters.StableColorHue = GlobalParameters.SCPresets[next].Hue;
+          EEPROM_MarkDirty();
+        }
+        udp_printf("SC Sequencer: -> preset %d \"%s\"", next, GlobalParameters.SCPresets[next].PresetName);
       }
     }
 

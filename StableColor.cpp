@@ -6,31 +6,40 @@
 
 extern Adafruit_NeoPixel strips[];
 
+static void renderSegment(int seg, uint32_t color) {
+    int strip = ledAssignments[seg][0];
+    int lo = min(ledAssignments[seg][1], ledAssignments[seg][2]);
+    int hi = max(ledAssignments[seg][1], ledAssignments[seg][2]);
+    for (int i = lo; i <= hi; i++)
+        strips[strip].setPixelColor(i, color);
+}
+
 void StableColor_MainFunction() {
-    /* Compute pulsed brightness via sine wave.
-       phase oscillates 0→1→0 at PulseFrequency Hz.
-       V oscillates between (1 - PulseDepth) * 255 and 255. */
     float t = millis() / 1000.0f;
     float phase = 0.5f + 0.5f * sinf(TWO_PI * GlobalParameters.PulseFrequency * t);
-    float vf = (1.0f - GlobalParameters.PulseDepth + GlobalParameters.PulseDepth * phase) * 255.0f;
-    uint8_t v = (uint8_t)constrain(vf, 0.0f, 255.0f);
+    float vBase = (1.0f - GlobalParameters.PulseDepth + GlobalParameters.PulseDepth * phase);
 
-    uint32_t color = strips[0].gamma32(
-        strips[0].ColorHSV(GlobalParameters.StableColorHue, GlobalParameters.StableColorSat, v));
-
-    /* Clear all LEDs then light each selected segment */
     for (int s = 0; s < NUMBER_OF_STRIPS; s++) strips[s].clear();
 
     for (int seg = 0; seg < NUMBER_OF_SEGMENTS; seg++) {
         if (!GlobalParameters.StableColorSegments[seg]) continue;
 
-        int strip    = ledAssignments[seg][0];
-        int ceilLed  = ledAssignments[seg][1];
-        int floorLed = ledAssignments[seg][2];
-        int lo = min(ceilLed, floorLed);
-        int hi = max(ceilLed, floorLed);
-        for (int i = lo; i <= hi; i++)
-            strips[strip].setPixelColor(i, color);
+        float mul = 1.0f;
+        if (GlobalParameters.SCSeqFadePhase > 0) {
+            /* Determine zone: outer ring or inner */
+            bool isOuter = false;
+            for (int p = 0; p < numberOfPerimeterSegments; p++) {
+                if (perimeterSegments[p] == seg) { isOuter = true; break; }
+            }
+            bool fadingThisSeg = (isOuter  && GlobalParameters.SCSeqFadeOuter) ||
+                                 (!isOuter && GlobalParameters.SCSeqFadeInner);
+            if (fadingThisSeg) mul = GlobalParameters.SCSeqFadeMultiplier;
+        }
+
+        uint8_t v = (uint8_t)constrain(vBase * mul * 255.0f, 0.0f, 255.0f);
+        uint32_t color = strips[0].gamma32(
+            strips[0].ColorHSV(GlobalParameters.StableColorHue, GlobalParameters.StableColorSat, v));
+        renderSegment(seg, color);
     }
 
     for (int s = 0; s < NUMBER_OF_STRIPS; s++) strips[s].show();

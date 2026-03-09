@@ -61,6 +61,62 @@ void EEPROM_Init(void)
       GlobalParameters.PulseDepth      = 0.4f;
       memset(GlobalParameters.StableColorSegments, true, NUMBER_OF_SEGMENTS);
 
+      // Stable color sequencer defaults
+      GlobalParameters.SCSeqEnabled           = false;
+      GlobalParameters.SCSeqMode              = 0; /* sequential */
+      GlobalParameters.SCSeqTimingMode        = 0; /* time-based */
+      GlobalParameters.SCSeqDwellTime_s       = SC_DWELL_DEFAULT_S;
+      GlobalParameters.SCSeqBeatsPerSwitch    = 1.0f;
+      GlobalParameters.SCSeqFPS               = SC_FPS_DEFAULT;
+      GlobalParameters.SCSeqCycleColors       = true;
+      GlobalParameters.SCSeqFadeEnabled       = false;
+      GlobalParameters.SCSeqFadeOuter         = true;
+      GlobalParameters.SCSeqFadeInner         = true;
+      GlobalParameters.SCSeqFadeDuration_ms   = SC_FADE_DEFAULT_MS;
+      GlobalParameters.SCSeqCurrentPreset     = 0;
+      GlobalParameters.SCSeqLastSwitch_ms     = 0;
+      GlobalParameters.NumberOfSCPresets      = 4;
+      /* runtime fade state - zeroed */
+      GlobalParameters.SCSeqFadeMultiplier    = 1.0f;
+      GlobalParameters.SCSeqFadePhase         = 0;
+      GlobalParameters.SCSeqFadePhaseStart_ms = 0;
+      GlobalParameters.SCSeqFadeTargetPreset  = 0;
+
+      /* Preset 0: "Full Grid" — all 30 segments, blue */
+      GlobalParameters.SCPresets[0].Active = true;
+      strncpy(GlobalParameters.SCPresets[0].PresetName, "Full Grid", 32);
+      GlobalParameters.SCPresets[0].Hue = 43690; /* blue ~240° */
+      memset(GlobalParameters.SCPresets[0].Segments, true, NUMBER_OF_SEGMENTS);
+
+      /* Preset 1: "Even Segs" — segments 0,2,4...28, cyan */
+      GlobalParameters.SCPresets[1].Active = true;
+      strncpy(GlobalParameters.SCPresets[1].PresetName, "Even Segs", 32);
+      GlobalParameters.SCPresets[1].Hue = 32768; /* cyan ~180° */
+      memset(GlobalParameters.SCPresets[1].Segments, false, NUMBER_OF_SEGMENTS);
+      for(int i = 0; i < NUMBER_OF_SEGMENTS; i += 2) GlobalParameters.SCPresets[1].Segments[i] = true;
+
+      /* Preset 2: "Odd Segs" — segments 1,3,5...29, purple */
+      GlobalParameters.SCPresets[2].Active = true;
+      strncpy(GlobalParameters.SCPresets[2].PresetName, "Odd Segs", 32);
+      GlobalParameters.SCPresets[2].Hue = 54613; /* purple ~300° */
+      memset(GlobalParameters.SCPresets[2].Segments, false, NUMBER_OF_SEGMENTS);
+      for(int i = 1; i < NUMBER_OF_SEGMENTS; i += 2) GlobalParameters.SCPresets[2].Segments[i] = true;
+
+      /* Preset 3: "Sparse" — every 3rd segment, orange */
+      GlobalParameters.SCPresets[3].Active = true;
+      strncpy(GlobalParameters.SCPresets[3].PresetName, "Sparse", 32);
+      GlobalParameters.SCPresets[3].Hue = 9102; /* orange ~50° */
+      memset(GlobalParameters.SCPresets[3].Segments, false, NUMBER_OF_SEGMENTS);
+      for(int i = 0; i < NUMBER_OF_SEGMENTS; i += 3) GlobalParameters.SCPresets[3].Segments[i] = true;
+
+      /* Presets 4–7: inactive placeholders */
+      for(int i = 4; i < NUMBER_OF_SC_PRESETS; i++){
+        GlobalParameters.SCPresets[i].Active = false;
+        strncpy(GlobalParameters.SCPresets[i].PresetName, "Preset", 32);
+        GlobalParameters.SCPresets[i].Hue = 0;
+        memset(GlobalParameters.SCPresets[i].Segments, false, NUMBER_OF_SEGMENTS);
+      }
+
       // Profile 0: "Rainbow 7" — rainbow colors from center node
       setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[0]);
       strncpy(GlobalParameters.RippleProfiles[0].ProfileName, "Rainbow 7", MAX_PROFILE_NAME_LEN);
@@ -114,6 +170,12 @@ void EEPROM_Init(void)
       GlobalParameters.RippleProfiles[3].Events[0].RippleLifeSpan = 4000;
       GlobalParameters.RippleProfiles[3].Events[0].Behavior = feisty;
       GlobalParameters.RippleProfiles[3].Events[0].RainbowDeltaPerTick = 0;
+
+      // Only profile 0 ("Rainbow 7") is active by default; others exist but are inactive
+      GlobalParameters.RippleProfiles[1].Active = 0;
+      GlobalParameters.RippleProfiles[2].Active = 0;
+      GlobalParameters.RippleProfiles[3].Active = 0;
+
 #if EEPROM_DEBUGGING
       udp_printf("Default global parameters setup by EEPROM_INIT");
       udp_printf(" - MasterFireRippleEnabled: %d", GlobalParameters.MasterFireRippleEnabled);
