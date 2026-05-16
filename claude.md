@@ -85,11 +85,10 @@ src/
 ├── HTTP_Server.h/cpp        # REST API, GlobalParameters, profile management
 ├── ASW.h/cpp                # Effect functions, bulk ripple firing
 ├── WiFi_utilities.h/cpp     # WiFi, OTA, UDP debug, web server routes
-├── MCAL/
-│   ├── ripple.h/cpp         # Core ripple engine (100 concurrent ripples)
-│   ├── mapping.h/cpp        # Topology definitions (nodes, segments, LEDs)
-│   └── EEP.h/cpp            # EEPROM (Preferences) storage with debounced saves
-└── Alexa/                   # Alexa/Hue Bridge integration
+└── MCAL/
+    ├── ripple.h/cpp         # Core ripple engine (100 concurrent ripples)
+    ├── mapping.h/cpp        # Topology definitions (nodes, segments, LEDs)
+    └── EEP.h/cpp            # EEPROM (Preferences) storage with debounced saves
 ```
 
 ### Data Structures
