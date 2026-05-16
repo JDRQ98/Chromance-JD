@@ -155,13 +155,16 @@ void loop()
             ? 1.0f - (float)elapsed / fadeDurMs : 0.0f;
         if(GlobalParameters.SCSeqFadeMultiplier <= 0.0f){
           GlobalParameters.SCSeqFadeMultiplier = 0.0f;
-          /* Apply the pending preset and start fade-in */
+          /* Apply the pending preset and start fade-in.
+             No EEPROM_MarkDirty here: SCSeqCurrentPreset, StableColorHue,
+             and StableColorSegments are runtime state that gets overwritten
+             on the next sequencer advance. Persisting them every cycle would
+             wear out NVS in days when running in FPS/beat mode. */
           unsigned char tgt = GlobalParameters.SCSeqFadeTargetPreset;
           GlobalParameters.SCSeqCurrentPreset = tgt;
           memcpy(GlobalParameters.StableColorSegments, GlobalParameters.SCPresets[tgt].Segments, NUMBER_OF_SEGMENTS);
           if(GlobalParameters.SCSeqCycleColors)
             GlobalParameters.StableColorHue = GlobalParameters.SCPresets[tgt].Hue;
-          EEPROM_MarkDirty();
           GlobalParameters.SCSeqFadePhase = 2;
           GlobalParameters.SCSeqFadePhaseStart_ms = currentTime_ms;
         }
@@ -198,12 +201,12 @@ void loop()
           GlobalParameters.SCSeqFadePhaseStart_ms = currentTime_ms;
           GlobalParameters.SCSeqFadeMultiplier    = 1.0f;
         } else {
-          /* Immediate switch */
+          /* Immediate switch — runtime state only, no EEPROM_MarkDirty
+             (see fade-out branch above for rationale). */
           GlobalParameters.SCSeqCurrentPreset = next;
           memcpy(GlobalParameters.StableColorSegments, GlobalParameters.SCPresets[next].Segments, NUMBER_OF_SEGMENTS);
           if(GlobalParameters.SCSeqCycleColors)
             GlobalParameters.StableColorHue = GlobalParameters.SCPresets[next].Hue;
-          EEPROM_MarkDirty();
         }
         udp_printf("SC Sequencer: -> preset %d \"%s\"", next, GlobalParameters.SCPresets[next].PresetName);
       }
