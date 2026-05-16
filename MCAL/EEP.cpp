@@ -82,9 +82,9 @@ void EEPROM_Init(void)
       GlobalParameters.SCSeqFadePhaseStart_ms = 0;
       GlobalParameters.SCSeqFadeTargetPreset  = 0;
 
-      /* Preset 0: "Full Grid" — all 30 segments, blue */
+      /* Preset 0: "Solid" — all 30 segments, blue. The default "just be one color" preset. */
       GlobalParameters.SCPresets[0].Active = true;
-      strncpy(GlobalParameters.SCPresets[0].PresetName, "Full Grid", 32);
+      strncpy(GlobalParameters.SCPresets[0].PresetName, "Solid", 32);
       GlobalParameters.SCPresets[0].Hue = 43690; /* blue ~240° */
       memset(GlobalParameters.SCPresets[0].Segments, true, NUMBER_OF_SEGMENTS);
 
@@ -123,53 +123,101 @@ void EEPROM_Init(void)
       GlobalParameters.RippleProfiles[0].ProfilePeriod_ms = 3000;
       // Events[0] already set by setupDefaultProfileParameters (center node, feisty, speed 0.5, rainbow delta 200)
 
-      // Profile 1: "Ocean Wave" — blues/cyans, slow, border nodes
+      /* Profile 1: "Cyclone" — counter-rotating spirals from cube nodes.
+         Period = 4 s (two bars at 120 BPM). Two simultaneous events: pair-cube
+         ripples spiral clockwise (alwaysTurnsRight), odd-cube ripples spiral
+         counter-clockwise (alwaysTurnsLeft). Slow drift through cool palette. */
       setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[1]);
-      strncpy(GlobalParameters.RippleProfiles[1].ProfileName, "Ocean Wave", MAX_PROFILE_NAME_LEN);
+      strncpy(GlobalParameters.RippleProfiles[1].ProfileName, "Cyclone", MAX_PROFILE_NAME_LEN);
       GlobalParameters.RippleProfiles[1].ProfilePeriod_ms = 4000;
-      GlobalParameters.RippleProfiles[1].NumberOfColors = 4;
-      GlobalParameters.RippleProfiles[1].Colors[0] = 43690; /* blue (hue 240°) */
-      GlobalParameters.RippleProfiles[1].Colors[1] = 38229; /* cyan-blue (hue 210°) */
-      GlobalParameters.RippleProfiles[1].Colors[2] = 32768; /* cyan (hue 180°) */
-      GlobalParameters.RippleProfiles[1].Colors[3] = 36044; /* teal (hue ~198°) */
-      // Update event 0 nodes and settings
+      GlobalParameters.RippleProfiles[1].NumberOfColors = 5;
+      GlobalParameters.RippleProfiles[1].Colors[0] = 43690; /* blue (240°) */
+      GlobalParameters.RippleProfiles[1].Colors[1] = 32768; /* cyan (180°) */
+      GlobalParameters.RippleProfiles[1].Colors[2] = 48497; /* indigo (~266°) */
+      GlobalParameters.RippleProfiles[1].Colors[3] = 36044; /* teal (~198°) */
+      GlobalParameters.RippleProfiles[1].Colors[4] = 51425; /* violet (~282°) */
+      /* Event 0: pair-cube nodes spiral right (clockwise) */
       memset(GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes));
-      for(int i = 0; i < numberOfBorderNodes; i++) GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes[borderNodes[i]] = 1;
-      GlobalParameters.RippleProfiles[1].Events[0].RippleSpeed = 0.3;
-      GlobalParameters.RippleProfiles[1].Events[0].RippleLifeSpan = 4000;
-      GlobalParameters.RippleProfiles[1].Events[0].Behavior = weaksauce;
-      GlobalParameters.RippleProfiles[1].Events[0].RainbowDeltaPerTick = 0;
+      for(int i = 0; i < numberOfCubePairNodes; i++) GlobalParameters.RippleProfiles[1].Events[0].ActiveNodes[cubePairNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[1].Events[0].TimeOffset_ms      = 0;
+      GlobalParameters.RippleProfiles[1].Events[0].RippleType         = RIPPLETYPE_SINGLE;
+      GlobalParameters.RippleProfiles[1].Events[0].Direction          = 0;
+      GlobalParameters.RippleProfiles[1].Events[0].RippleSpeed        = 0.4f;
+      GlobalParameters.RippleProfiles[1].Events[0].RippleLifeSpan     = 3500;
+      GlobalParameters.RippleProfiles[1].Events[0].Behavior           = alwaysTurnsRight;
+      GlobalParameters.RippleProfiles[1].Events[0].RainbowDeltaPerTick = 80;
+      /* Event 1: odd-cube nodes spiral left (counter-clockwise) */
+      GlobalParameters.RippleProfiles[1].Events[1].Enabled            = true;
+      memset(GlobalParameters.RippleProfiles[1].Events[1].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[1].Events[1].ActiveNodes));
+      for(int i = 0; i < numberOfCubeOddNodes; i++) GlobalParameters.RippleProfiles[1].Events[1].ActiveNodes[cubeOddNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[1].Events[1].TimeOffset_ms      = 0;
+      GlobalParameters.RippleProfiles[1].Events[1].RippleType         = RIPPLETYPE_SINGLE;
+      GlobalParameters.RippleProfiles[1].Events[1].Direction          = 3;
+      GlobalParameters.RippleProfiles[1].Events[1].RippleSpeed        = 0.4f;
+      GlobalParameters.RippleProfiles[1].Events[1].RippleLifeSpan     = 3500;
+      GlobalParameters.RippleProfiles[1].Events[1].Behavior           = alwaysTurnsLeft;
+      GlobalParameters.RippleProfiles[1].Events[1].RainbowDeltaPerTick = 80;
 
-      // Profile 2: "Fire Storm" — reds/oranges/yellows, fast, center node
+      /* Profile 2: "Bloom" — symmetric flower-burst from center.
+         Period = 2 s (one bar at 120 BPM). Three DOUBLE ripples per period
+         rotated 120° apart, creating an opening-flower pattern. */
       setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[2]);
-      strncpy(GlobalParameters.RippleProfiles[2].ProfileName, "Fire Storm", MAX_PROFILE_NAME_LEN);
-      GlobalParameters.RippleProfiles[2].ProfilePeriod_ms = 1500;
+      strncpy(GlobalParameters.RippleProfiles[2].ProfileName, "Bloom", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[2].ProfilePeriod_ms = 2000;
       GlobalParameters.RippleProfiles[2].NumberOfColors = 4;
-      GlobalParameters.RippleProfiles[2].Colors[0] = 0;     /* red (hue 0°) */
-      GlobalParameters.RippleProfiles[2].Colors[1] = 3640;  /* orange-red (hue ~20°) */
-      GlobalParameters.RippleProfiles[2].Colors[2] = 5461;  /* orange (hue ~30°) */
-      GlobalParameters.RippleProfiles[2].Colors[3] = 9102;  /* yellow-orange (hue ~50°) */
-      // Event 0 already has center node from setupDefaultProfileParameters
-      GlobalParameters.RippleProfiles[2].Events[0].RippleSpeed = 1.5;
-      GlobalParameters.RippleProfiles[2].Events[0].RippleLifeSpan = 2000;
-      GlobalParameters.RippleProfiles[2].Events[0].Behavior = angry;
-      GlobalParameters.RippleProfiles[2].Events[0].RainbowDeltaPerTick = 0;
+      GlobalParameters.RippleProfiles[2].Colors[0] = 60074; /* hot pink (~330°) */
+      GlobalParameters.RippleProfiles[2].Colors[1] = 2912;  /* coral (~16°) */
+      GlobalParameters.RippleProfiles[2].Colors[2] = 54613; /* magenta (~300°) */
+      GlobalParameters.RippleProfiles[2].Colors[3] = 0;     /* red (0°) */
+      /* All three events share center node, DOUBLE ripple, feisty behavior, fast-ish */
+      const unsigned char bloomDirs[3] = {0, 2, 4};
+      const unsigned short bloomOffsets[3] = {0, 666, 1333};
+      for(int e = 0; e < 3; e++){
+        TimeEvent_struct* ev = &GlobalParameters.RippleProfiles[2].Events[e];
+        ev->Enabled            = true;
+        ev->TimeOffset_ms      = bloomOffsets[e];
+        ev->RippleLifeSpan     = 1500;
+        ev->RippleType         = RIPPLETYPE_DOUBLE;
+        ev->Behavior           = feisty;
+        ev->RippleSpeed        = 0.7f;
+        ev->RainbowDeltaPerTick = 0;
+        ev->Direction          = bloomDirs[e];
+        memset(ev->ActiveNodes, 0, sizeof(ev->ActiveNodes));
+        ev->ActiveNodes[starburstNode] = 1;
+      }
 
-      // Profile 3: "Forest" — greens/yellows, medium speed, quad nodes
+      /* Profile 3: "Heartbeat" — lub-DUB pulse from the perimeter.
+         Period = 2 s (one heartbeat per bar). Two SHARD bursts close together
+         followed by a long quiet gap so the residual decay reads as the rest. */
       setupDefaultProfileParameters(&GlobalParameters.RippleProfiles[3]);
-      strncpy(GlobalParameters.RippleProfiles[3].ProfileName, "Forest", MAX_PROFILE_NAME_LEN);
-      GlobalParameters.RippleProfiles[3].ProfilePeriod_ms = 2500;
+      strncpy(GlobalParameters.RippleProfiles[3].ProfileName, "Heartbeat", MAX_PROFILE_NAME_LEN);
+      GlobalParameters.RippleProfiles[3].ProfilePeriod_ms = 2000;
       GlobalParameters.RippleProfiles[3].NumberOfColors = 4;
-      GlobalParameters.RippleProfiles[3].Colors[0] = 21845; /* green (hue 120°) */
-      GlobalParameters.RippleProfiles[3].Colors[1] = 18204; /* yellow-green (hue ~100°) */
-      GlobalParameters.RippleProfiles[3].Colors[2] = 14563; /* chartreuse (hue ~80°) */
-      GlobalParameters.RippleProfiles[3].Colors[3] = 10922; /* yellow (hue ~60°) */
+      GlobalParameters.RippleProfiles[3].Colors[0] = 0;     /* red (0°) */
+      GlobalParameters.RippleProfiles[3].Colors[1] = 63715; /* crimson (~350°) */
+      GlobalParameters.RippleProfiles[3].Colors[2] = 60074; /* magenta-red (~330°) */
+      GlobalParameters.RippleProfiles[3].Colors[3] = 3640;  /* orange-red (~20°) */
+      /* Event 0: "lub" — short shard burst from border nodes */
       memset(GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes));
-      for(int i = 0; i < numberOfQuadNodes; i++) GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes[QuadNodes[i]] = 1;
-      GlobalParameters.RippleProfiles[3].Events[0].RippleSpeed = 0.7;
-      GlobalParameters.RippleProfiles[3].Events[0].RippleLifeSpan = 4000;
-      GlobalParameters.RippleProfiles[3].Events[0].Behavior = feisty;
+      for(int i = 0; i < numberOfBorderNodes; i++) GlobalParameters.RippleProfiles[3].Events[0].ActiveNodes[borderNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[3].Events[0].TimeOffset_ms      = 0;
+      GlobalParameters.RippleProfiles[3].Events[0].RippleType         = RIPPLETYPE_SHARD;
+      GlobalParameters.RippleProfiles[3].Events[0].Direction          = ALL_DIRECTIONS;
+      GlobalParameters.RippleProfiles[3].Events[0].RippleSpeed        = 1.2f;
+      GlobalParameters.RippleProfiles[3].Events[0].RippleLifeSpan     = 600;
+      GlobalParameters.RippleProfiles[3].Events[0].Behavior           = weaksauce;
       GlobalParameters.RippleProfiles[3].Events[0].RainbowDeltaPerTick = 0;
+      /* Event 1: "DUB" — slightly larger shard 250ms later */
+      GlobalParameters.RippleProfiles[3].Events[1].Enabled            = true;
+      memset(GlobalParameters.RippleProfiles[3].Events[1].ActiveNodes, 0, sizeof(GlobalParameters.RippleProfiles[3].Events[1].ActiveNodes));
+      for(int i = 0; i < numberOfBorderNodes; i++) GlobalParameters.RippleProfiles[3].Events[1].ActiveNodes[borderNodes[i]] = 1;
+      GlobalParameters.RippleProfiles[3].Events[1].TimeOffset_ms      = 250;
+      GlobalParameters.RippleProfiles[3].Events[1].RippleType         = RIPPLETYPE_SHARD;
+      GlobalParameters.RippleProfiles[3].Events[1].Direction          = ALL_DIRECTIONS;
+      GlobalParameters.RippleProfiles[3].Events[1].RippleSpeed        = 1.4f;
+      GlobalParameters.RippleProfiles[3].Events[1].RippleLifeSpan     = 800;
+      GlobalParameters.RippleProfiles[3].Events[1].Behavior           = weaksauce;
+      GlobalParameters.RippleProfiles[3].Events[1].RainbowDeltaPerTick = 0;
 
       // Only profile 0 ("Rainbow 7") is active by default; others exist but are inactive
       GlobalParameters.RippleProfiles[1].Active = 0;
