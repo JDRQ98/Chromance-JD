@@ -123,8 +123,14 @@ static void buildModeOptions() {
     g_modeOptions += ";Stable Sequence";
     g_modeMap[g_modeCount++] = { MODE_STABLE_SEQ, -1 };
 
-    for (int i = 0; i < NUMBER_OF_PROFILES; i++) {
-        if (!GlobalParameters.RippleProfiles[i].Active) continue;
+    /* Show every defined ripple-profile slot regardless of its Active flag.
+       Active is "is this profile firing right now" (multiple can fire at
+       once for overlapping effects); the HA dropdown is "what mode should
+       I switch to", which is a different question. Selection (below) makes
+       the chosen profile exclusively Active. */
+    unsigned int rippleSlots = GlobalParameters.NumberOfActiveProfiles;
+    if (rippleSlots > NUMBER_OF_PROFILES) rippleSlots = NUMBER_OF_PROFILES;
+    for (unsigned int i = 0; i < rippleSlots; i++) {
         g_modeOptions += ";Ripple: ";
         appendOptionEscaped(g_modeOptions, GlobalParameters.RippleProfiles[i].ProfileName);
         g_modeMap[g_modeCount++] = { MODE_RIPPLE_PROFILE, (int8_t)i };
@@ -177,22 +183,38 @@ static void onModeCommand(int8_t index, HASelect* sender) {
         case MODE_OFF:
             GlobalParameters.MasterFireRippleEnabled = false;
             break;
-        case MODE_RIPPLE_SEQ:
+        case MODE_RIPPLE_SEQ: {
             GlobalParameters.MasterFireRippleEnabled = true;
             GlobalParameters.StableColorMode         = false;
             GlobalParameters.SequencerEnabled        = true;
+            /* Activate every defined slot so the sequencer has something to
+               cycle through. The fire-gate in main.cpp skips Active=false
+               profiles even when SequencerEnabled, so without this an empty
+               dwell silence would happen on any inactive slot. */
+            unsigned int n = GlobalParameters.NumberOfActiveProfiles;
+            if (n > NUMBER_OF_PROFILES) n = NUMBER_OF_PROFILES;
+            for (unsigned int i = 0; i < n; i++) GlobalParameters.RippleProfiles[i].Active = true;
             break;
+        }
         case MODE_STABLE_SEQ:
             GlobalParameters.MasterFireRippleEnabled = true;
             GlobalParameters.StableColorMode         = true;
             GlobalParameters.SCSeqEnabled            = true;
             break;
-        case MODE_RIPPLE_PROFILE:
+        case MODE_RIPPLE_PROFILE: {
             GlobalParameters.MasterFireRippleEnabled = true;
             GlobalParameters.StableColorMode         = false;
             GlobalParameters.SequencerEnabled        = false;
             GlobalParameters.SequencerCurrentProfile = (unsigned char)m.slot;
+            /* Exclusive activation: the picked profile becomes the only one
+               firing. Matches the "this mode is what's playing right now"
+               mental model of the unified picker. For overlapping multi-Active
+               setups, the WebUI is the right tool. */
+            for (int i = 0; i < NUMBER_OF_PROFILES; i++) {
+                GlobalParameters.RippleProfiles[i].Active = (i == m.slot);
+            }
             break;
+        }
         case MODE_STABLE_PRESET:
             GlobalParameters.MasterFireRippleEnabled = true;
             GlobalParameters.StableColorMode         = true;
