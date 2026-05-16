@@ -95,6 +95,23 @@ static int8_t computeCurrentModeIndex_locked() {
     return -1;
 }
 
+/* ArduinoHA's HASerializerArray::serialize emits option strings between JSON
+   quotes without escaping their contents. A preset/profile name containing a
+   backslash or double-quote therefore produces malformed JSON in the discovery
+   payload, and HA silently drops the entity. Pre-escape those characters here;
+   memcmp at command-receive time still matches correctly because HA decodes
+   the escapes before sending the command payload back. Also skip semicolons,
+   which are the option-list delimiter for setOptions. */
+static void appendOptionEscaped(String& dest, const char* name) {
+    for (const char* p = name; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c == '\\' || c == '"') { dest += '\\'; dest += (char)c; }
+        else if (c == ';')         { dest += '_'; }            /* delimiter — replace */
+        else if (c < 0x20)         { /* control char — drop */ }
+        else                       { dest += (char)c; }
+    }
+}
+
 static void buildModeOptions() {
     g_modeCount = 0;
     g_modeOptions = "Off";
@@ -109,13 +126,13 @@ static void buildModeOptions() {
     for (int i = 0; i < NUMBER_OF_PROFILES; i++) {
         if (!GlobalParameters.RippleProfiles[i].Active) continue;
         g_modeOptions += ";Ripple: ";
-        g_modeOptions += GlobalParameters.RippleProfiles[i].ProfileName;
+        appendOptionEscaped(g_modeOptions, GlobalParameters.RippleProfiles[i].ProfileName);
         g_modeMap[g_modeCount++] = { MODE_RIPPLE_PROFILE, (int8_t)i };
     }
     for (int i = 0; i < NUMBER_OF_SC_PRESETS; i++) {
         if (!GlobalParameters.SCPresets[i].Active) continue;
         g_modeOptions += ";Stable: ";
-        g_modeOptions += GlobalParameters.SCPresets[i].PresetName;
+        appendOptionEscaped(g_modeOptions, GlobalParameters.SCPresets[i].PresetName);
         g_modeMap[g_modeCount++] = { MODE_STABLE_PRESET, (int8_t)i };
     }
 }
