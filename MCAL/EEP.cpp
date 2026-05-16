@@ -61,18 +61,22 @@ void EEPROM_Init(void)
       GlobalParameters.PulseDepth      = 0.4f;
       memset(GlobalParameters.StableColorSegments, true, NUMBER_OF_SEGMENTS);
 
-      // Stable color sequencer defaults
+      /* Stable color sequencer defaults — tuned so the |/ /\ rotating-line
+         animation presets work as intended when the user enables the sequencer.
+         Pulse-synced timing means each frame advances on the global pulse;
+         fade with inner-segments-only at 250 ms gives the line a smooth
+         rotation feel. SCSeqEnabled stays false so the device boots quietly. */
       GlobalParameters.SCSeqEnabled           = false;
       GlobalParameters.SCSeqMode              = 0; /* sequential */
-      GlobalParameters.SCSeqTimingMode        = 0; /* time-based */
+      GlobalParameters.SCSeqTimingMode        = 1; /* pulse-synced */
       GlobalParameters.SCSeqDwellTime_s       = SC_DWELL_DEFAULT_S;
       GlobalParameters.SCSeqBeatsPerSwitch    = 1.0f;
       GlobalParameters.SCSeqFPS               = SC_FPS_DEFAULT;
-      GlobalParameters.SCSeqCycleColors       = true;
-      GlobalParameters.SCSeqFadeEnabled       = false;
-      GlobalParameters.SCSeqFadeOuter         = true;
+      GlobalParameters.SCSeqCycleColors       = false; /* presets share cyan hue */
+      GlobalParameters.SCSeqFadeEnabled       = true;
+      GlobalParameters.SCSeqFadeOuter         = false;
       GlobalParameters.SCSeqFadeInner         = true;
-      GlobalParameters.SCSeqFadeDuration_ms   = SC_FADE_DEFAULT_MS;
+      GlobalParameters.SCSeqFadeDuration_ms   = 250;
       GlobalParameters.SCSeqCurrentPreset     = 0;
       GlobalParameters.SCSeqLastSwitch_ms     = 0;
       GlobalParameters.NumberOfSCPresets      = 4;
@@ -82,32 +86,42 @@ void EEPROM_Init(void)
       GlobalParameters.SCSeqFadePhaseStart_ms = 0;
       GlobalParameters.SCSeqFadeTargetPreset  = 0;
 
-      /* Preset 0: "Solid" — all 30 segments, blue. The default "just be one color" preset. */
+      /* Preset 0: "Solid" — all 30 segments, blue. Default "just be one color" preset. */
       GlobalParameters.SCPresets[0].Active = true;
       strncpy(GlobalParameters.SCPresets[0].PresetName, "Solid", 32);
       GlobalParameters.SCPresets[0].Hue = 43690; /* blue ~240° */
       memset(GlobalParameters.SCPresets[0].Segments, true, NUMBER_OF_SEGMENTS);
 
-      /* Preset 1: "Even Segs" — segments 0,2,4...28, cyan */
+      /* Presets 1-3: rotating-line animation frames captured from the live device.
+         Cycle through them with the SC sequencer (pulse-synced timing, fade enabled,
+         fade-inner only, fade ~250 ms) for a barber-pole / rotating-beam effect. */
+
+      /* Preset 1: "|" — vertical bar frame */
       GlobalParameters.SCPresets[1].Active = true;
-      strncpy(GlobalParameters.SCPresets[1].PresetName, "Even Segs", 32);
+      strncpy(GlobalParameters.SCPresets[1].PresetName, "|", 32);
       GlobalParameters.SCPresets[1].Hue = 32768; /* cyan ~180° */
-      memset(GlobalParameters.SCPresets[1].Segments, false, NUMBER_OF_SEGMENTS);
-      for(int i = 0; i < NUMBER_OF_SEGMENTS; i += 2) GlobalParameters.SCPresets[1].Segments[i] = true;
+      {
+        const bool segs[NUMBER_OF_SEGMENTS] = {1,1,1,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,0,1,0,0,1,0,1,1,1,1,0,1};
+        memcpy(GlobalParameters.SCPresets[1].Segments, segs, NUMBER_OF_SEGMENTS);
+      }
 
-      /* Preset 2: "Odd Segs" — segments 1,3,5...29, purple */
+      /* Preset 2: "/" — forward-slash frame */
       GlobalParameters.SCPresets[2].Active = true;
-      strncpy(GlobalParameters.SCPresets[2].PresetName, "Odd Segs", 32);
-      GlobalParameters.SCPresets[2].Hue = 54613; /* purple ~300° */
-      memset(GlobalParameters.SCPresets[2].Segments, false, NUMBER_OF_SEGMENTS);
-      for(int i = 1; i < NUMBER_OF_SEGMENTS; i += 2) GlobalParameters.SCPresets[2].Segments[i] = true;
+      strncpy(GlobalParameters.SCPresets[2].PresetName, "/", 32);
+      GlobalParameters.SCPresets[2].Hue = 32768; /* cyan ~180° */
+      {
+        const bool segs[NUMBER_OF_SEGMENTS] = {1,1,1,1,1,0,0,1,1,1,1,1,1,1,0,1,1,1,0,0,1,0,0,1,1,1,0,1,0,0};
+        memcpy(GlobalParameters.SCPresets[2].Segments, segs, NUMBER_OF_SEGMENTS);
+      }
 
-      /* Preset 3: "Sparse" — every 3rd segment, orange */
+      /* Preset 3: "\" — backslash frame */
       GlobalParameters.SCPresets[3].Active = true;
-      strncpy(GlobalParameters.SCPresets[3].PresetName, "Sparse", 32);
-      GlobalParameters.SCPresets[3].Hue = 9102; /* orange ~50° */
-      memset(GlobalParameters.SCPresets[3].Segments, false, NUMBER_OF_SEGMENTS);
-      for(int i = 0; i < NUMBER_OF_SEGMENTS; i += 3) GlobalParameters.SCPresets[3].Segments[i] = true;
+      strncpy(GlobalParameters.SCPresets[3].PresetName, "\\", 32);
+      GlobalParameters.SCPresets[3].Hue = 32768; /* cyan ~180° */
+      {
+        const bool segs[NUMBER_OF_SEGMENTS] = {1,1,1,0,0,1,0,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,0,0,1,0};
+        memcpy(GlobalParameters.SCPresets[3].Segments, segs, NUMBER_OF_SEGMENTS);
+      }
 
       /* Presets 4–7: inactive placeholders */
       for(int i = 4; i < NUMBER_OF_SC_PRESETS; i++){
