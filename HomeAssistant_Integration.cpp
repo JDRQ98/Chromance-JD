@@ -281,6 +281,11 @@ void HA_init() {
     haBpm.setCurrentState((int32_t)GlobalParameters.GlobalBPM);
     xSemaphoreGive(gParamsMutex);
 
+    /* PubSubClient defaults to a 256-byte buffer; the HASelect discovery
+       payload (device metadata + options array + topics) easily exceeds
+       that and gets silently dropped. Bump well past anything we'd send. */
+    mqttClient.setBufferSize(1024);
+
     mqttClient.begin("192.168.100.201", 1883, "mqtt_hexagono", "hexagono123");
     Serial.println("[HA] Home Assistant MQTT initialized.");
 }
