@@ -61,17 +61,19 @@ ESP32-based LED art installation with 19-node hexagonal topology driving 330 WS2
 
 ### Communication Protocol
 
-HTTP REST API:
+HTTP REST API (HTTP) for the WebUI + MQTT (ArduinoHA) for Home Assistant:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/getCurrentProfiles` | GET | Retrieve all profiles, global params, and sequencer state |
-| `/updateProfile` | POST | Update a single profile by index (JSON body) |
-| `/updateGlobalParameters` | POST | Update global settings: decay, brightness, sequencer (JSON body) |
-| `/restoreDefaults` | POST | Wipe EEPROM and restart with factory defaults |
+| `/getCurrentProfiles` | GET | Retrieve all ripple profiles, SC presets, global params, sequencer state |
+| `/updateProfile` | POST | Update or delete a single ripple profile by index |
+| `/updateGlobalParameters` | POST | Batch-update global settings (decay, brightness, master, sequencers, stable color, BPM) |
+| `/updateStableColorPreset` | POST | Update a single SC preset by index |
 | `/ManualRipple` | GET | Trigger single manual ripple burst |
-| `/MasterFireRippleEnabled/on` | GET | Enable automatic ripple firing |
-| `/MasterFireRippleEnabled/off` | GET | Disable automatic ripple firing |
+| `/MasterFireRippleEnabled/on\|off` | GET | Enable/disable master fire |
+| `/resetMicrocontroller` | GET | Soft restart |
+| `/clearEEPROM` | GET | Wipe EEPROM (restart re-creates factory defaults) |
+| `/update` | GET (ElegantOTA) | OTA firmware update UI |
 
 ---
 
@@ -93,38 +95,87 @@ src/
 
 ### Data Structures
 
-**RippleProfile_struct** — per-profile settings (up to 10 profiles):
+**TimeEvent_struct** — one scheduled fire event within a profile's period (up to 5 per profile):
+```cpp
+typedef struct {
+  boolean Enabled;
+  unsigned short TimeOffset_ms;           // When to fire (ms from period start)
+  unsigned long RippleLifeSpan;           // Per-event lifespan (ms)
+  unsigned char RippleType;               // 0=single, 1=double, 2=shard
+  rippleBehavior Behavior;                // 0-4
+  float RippleSpeed;                      // LEDs per tick
+  short RainbowDeltaPerTick;              // Hue delta per advance
+  signed char Direction;                  // -1=all, 0-5
+  boolean ActiveNodes[19];                // Per-event node selection
+} TimeEvent_struct;
+```
+
+**RippleProfile_struct** — period-based, multi-event profile (up to 10 profiles):
 ```cpp
 typedef struct {
   boolean Active;
   char ProfileName[32];
-  boolean ActiveNodes[19];         // Which nodes fire ripples
-  rippleBehavior Behavior;         // 0-4 turn aggressiveness
-  signed char Direction;           // -1 = all, 0-5 = specific direction
-  unsigned long RippleLifeSpan;    // ms
-  float RippleSpeed;               // LEDs per tick (pressure gain)
-  short RainbowDeltaPerTick;       // Hue shift per ripple advance
-  unsigned int Colors[16];         // HSV hue values (0-65535)
+  unsigned int Colors[16];                 // HSV hues, shared across events
   unsigned int NumberOfColors;
-  unsigned int CurrentColor;       // Index into Colors[]
-  short DelayBetweenRipples_ms;
-  unsigned long TimeLastRippleFired_ms;  // Runtime: last fire timestamp
+  unsigned int CurrentColor;               // Runtime: cycles through Colors[]
+  unsigned long ProfilePeriod_ms;          // Total period duration
+  TimeEvent_struct Events[5];              // t0-t4 scheduled events
+  unsigned long PeriodStartTime_ms;        // Runtime
+  boolean EventFired[5];                   // Runtime
 } RippleProfile_struct;
 ```
 
-**GlobalParameters_struct** — global settings + all profiles:
+**StableColorPreset_struct** — solid-color preset (up to 8):
+```cpp
+typedef struct {
+  boolean Active;
+  char PresetName[32];
+  unsigned int Hue;                        // 16-bit HSV hue
+  boolean Segments[30];                    // Per-segment selection
+} StableColorPreset_struct;
+```
+
+**GlobalParameters_struct** — global settings + all profiles + all SC presets:
 ```cpp
 typedef struct {
   boolean MasterFireRippleEnabled;
-  float Decay;                             // Brightness fade per tick (0.9-1.0)
+  float Decay;                             // Brightness fade per tick
   unsigned char Brightness;                // LED brightness (0-255)
-  RippleProfile_struct RippleProfiles[10]; // Up to 10 profiles
+  RippleProfile_struct RippleProfiles[10];
   unsigned int NumberOfActiveProfiles;
-  boolean SequencerEnabled;                // Is sequencer running?
-  unsigned char SequencerMode;             // 0 = sequential, 1 = random
-  unsigned short SequencerDwellTime_s;     // Seconds per profile (10-120)
-  unsigned char SequencerCurrentProfile;   // Current profile index
-  unsigned long SequencerLastSwitch_ms;    // Runtime: last switch timestamp
+
+  // Ripple-profile sequencer
+  boolean SequencerEnabled;
+  unsigned char SequencerMode;             // 0=sequential, 1=random
+  unsigned short SequencerDwellTime_s;     // 10-120
+  unsigned char SequencerCurrentProfile;
+  unsigned long SequencerLastSwitch_ms;    // Runtime
+  float GlobalBPM;                         // Used by SC sequencer beat mode
+
+  // Stable color mode (bypasses ripple engine, paints solid color w/ optional pulse)
+  boolean StableColorMode;
+  unsigned int StableColorHue;
+  unsigned char StableColorSat;
+  float PulseFrequency;
+  float PulseDepth;
+  boolean StableColorSegments[30];
+
+  // Stable color preset sequencer (time/beat/fps timing modes, fade transitions)
+  boolean SCSeqEnabled;
+  unsigned char SCSeqMode;                 // 0=sequential, 1=random
+  unsigned char SCSeqTimingMode;           // 0=time, 1=pulse, 2=fps
+  float SCSeqDwellTime_s;
+  float SCSeqBeatsPerSwitch;
+  unsigned char SCSeqFPS;
+  boolean SCSeqCycleColors;
+  boolean SCSeqFadeEnabled;
+  boolean SCSeqFadeOuter, SCSeqFadeInner;
+  unsigned short SCSeqFadeDuration_ms;
+  unsigned char SCSeqCurrentPreset;
+  unsigned long SCSeqLastSwitch_ms;        // Runtime
+  unsigned char NumberOfSCPresets;
+  // ... runtime fade state ...
+  StableColorPreset_struct SCPresets[8];
 } GlobalParameters_struct;
 ```
 
@@ -188,14 +239,23 @@ When profile properties are updated via REST API, the firmware reacts immediatel
 | Decay | Applies naturally (global fade multiplier) |
 | DelayBetweenRipples, RippleLifeSpan, Brightness, Sequencer | No reactive action |
 
-### Default Profiles (4 presets on first boot)
+### Default Ripple Profiles (4 presets on first boot, only Rainbow 7 active by default)
 
-| Index | Name | Nodes | Colors | Speed | Behavior |
-|-------|------|-------|--------|-------|----------|
-| 0 | Rainbow 7 | All (default) | 7 rainbow hues | 0.5 | feisty |
-| 1 | Ocean Wave | Border nodes | Blues/cyans | 0.3 | weaksauce |
-| 2 | Fire Storm | Center node (9) | Reds/oranges | 1.5 | angry |
-| 3 | Forest | Quad nodes | Greens/yellows | 0.7 | feisty |
+| Index | Name | Period | Events | Notes |
+|-------|------|--------|--------|-------|
+| 0 | Rainbow 7 | 3000 ms | 1 single from center | Rainbow palette with hue delta |
+| 1 | Cyclone | 4000 ms | 2 simultaneous: pair cubes (alwaysTurnsRight), odd cubes (alwaysTurnsLeft) | Counter-rotating spirals |
+| 2 | Bloom | 2000 ms | 3 DOUBLE bursts from center, rotated 120° at offsets 0/666/1333 ms | Flower bloom pattern |
+| 3 | Heartbeat | 2000 ms | 2 SHARD bursts from border nodes (lub-DUB at 0 ms / 250 ms) | Pulsing rhythm |
+
+### Default Stable Color Presets (4 active on first boot)
+
+| Index | Name | Segments | Hue |
+|-------|------|----------|-----|
+| 0 | Solid | All 30 | Blue |
+| 1 | Even Segs | 0,2,...,28 | Cyan |
+| 2 | Odd Segs | 1,3,...,29 | Purple |
+| 3 | Sparse | Every 3rd | Orange |
 
 ### EEPROM / Preferences (`MCAL/EEP.h`, `MCAL/EEP.cpp`)
 
@@ -268,20 +328,60 @@ Per-profile editing with hex grid node selection:
 
 ---
 
+## Home Assistant Integration (`HomeAssistant_Integration.{cpp,h}`)
+
+MQTT-based integration using the `ArduinoHA` library (replaced the old fauxmoESP/Hue-Bridge-emulation Alexa path).
+
+**MQTT broker:** hardcoded at `192.168.100.201:1883` with credentials `mqtt_hexagono:hexagono123` — change in `HA_init()` if your broker moves.
+
+**Exposed HA entities (under device "Hexagono"):**
+
+| Entity | Type | Purpose |
+|--------|------|---------|
+| `light.hexagono` | HALight (state/brightness/RGB) | Master on/off, brightness slider, hue (writes `StableColorHue` only — does NOT force Stable mode) |
+| `select.hexagono_mode` | HASelect | Unified mode picker: `Off`, `Ripple Sequence`, `Stable Sequence`, `Ripple: <name>` (per active ripple profile), `Stable: <name>` (per active SC preset) |
+| `number.hexagono_bpm` | HANumber | Sets `GlobalBPM` (40-300), used by SC sequencer beat mode |
+| `button.hexagono_tap_tempo` | HAButton | Tap-tempo button (ring buffer of last 4 taps → computed BPM) |
+
+**Configuration URL:** `HADevice::setConfigurationUrl("http://<ip>/")` — HA renders a "Visit Device" link on the device page pointing at the WebUI.
+
+**State sync:** `HA_loop()` polls GlobalParameters every 500 ms and publishes mode/brightness/BPM. `setState` is a no-op when the value matches the last published one, so the polling is cheap. This means HA reflects WebUI changes and sequencer advances within ~500 ms.
+
+**Limitation:** `HASelect::setOptions()` can only be called once per the ArduinoHA contract. The Mode option list is built at boot from the currently-active profile/preset names. Renaming a profile in the WebUI requires a device restart to update the HA dropdown.
+
+---
+
 ## Configuration Parameters
+
+Per-event (`TimeEvent_struct`):
 
 | Parameter | Min | Default | Max | Description |
 |-----------|-----|---------|-----|-------------|
-| `DelayBetweenRipples_ms` | 1 | 3000 | 20000 | ms between auto-fired bursts |
-| `RippleLifeSpan` | 1 | 3000 | 20000 | Ripple lifetime in ms |
+| `TimeOffset_ms` | 0 | 0 | <ProfilePeriod | When the event fires within the period |
+| `RippleLifeSpan` | 1 | 5000 | 20000 | Ripple lifetime in ms |
+| `RippleType` | 0 | 0 | 2 | 0=single, 1=double, 2=shard |
 | `RippleSpeed` | 0.01 | 0.5 | 10 | LEDs per tick (pressure gain) |
-| `Decay` | 0.9 | 0.985 | 1.0 | Brightness fade per tick |
-| `Behavior` | 0 | 1 (feisty) | 4 | Turn aggressiveness |
+| `Behavior` | 0 | 1 (feisty) | 4 | weaksauce/feisty/angry/right/left |
 | `Direction` | -1 | -1 (all) | 5 | Starting direction |
 | `RainbowDeltaPerTick` | 0 | 200 | 2000 | Hue shift per ripple advance |
+
+Per-profile:
+
+| Parameter | Min | Default | Max | Description |
+|-----------|-----|---------|-----|-------------|
+| `ProfilePeriod_ms` | 500 | 5000 | 60000 | Total period duration |
 | `NumberOfColors` | 1 | 7 | 16 | Colors in palette |
+
+Global:
+
+| Parameter | Min | Default | Max | Description |
+|-----------|-----|---------|-----|-------------|
+| `Decay` | 0.9 | 0.985 | 1.0 | Brightness fade per tick |
 | `Brightness` | 0 | 128 | 255 | Global LED brightness |
 | `SequencerDwellTime_s` | 10 | 30 | 120 | Seconds per profile in sequencer |
+| `GlobalBPM` | 40 | 120 | 300 | Used by SC sequencer beat-mode and HA |
+| `SCSeqDwellTime_s` | 0.5 | 30 | 120 | SC preset dwell (time mode) |
+| `SCSeqFadeDuration_ms` | 5 | 300 | 2000 | Per-half fade duration |
 
 ---
 
