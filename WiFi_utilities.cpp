@@ -1,19 +1,13 @@
 #include <WiFi_utilities.h>
 #include <ESPmDNS.h>
 #include "ASW.h" /* for OTA routines */
-#include "Alexa/AlexaControl.h"
-#include "Alexa/HueBridge.h"
 #include "HTTP_Server.h"
 #include "MCAL/ripple.h"
 #include "MCAL/EEP.h"
 
 /* Local variables */
 const char *udpServerIP = UDP_SERVER_IP;
-
 AsyncWebServer server(80);
-
-static HueBridge hueBridge;
-
 WiFiUDP udp;
 IPAddress udpServer;
 bool      udpConnected = false;
@@ -84,46 +78,16 @@ static void setupWebServer(void){
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  /* Catch-all: OPTIONS preflight → 200, /api/* → HueBridge, everything else → 404 */
+  /* Catch-all: OPTIONS preflight → 200 → 404 */
   server.onNotFound([](AsyncWebServerRequest *request) {
     if (request->method() == HTTP_OPTIONS) {
       request->send(200);
-      return;
-    }
-    if (request->url().startsWith("/api/")) {
-      hueBridge.handleApiRequest(request);
       return;
     }
     request->send(404);
   });
 
   HTTP_backend_init();
-
-  /* Register Hue Bridge API routes + start UPnP SSDP listener on port 1900.
-     This must come AFTER HTTP_backend_init() so all routes are registered before
-     server.begin() is called in setupOTA(). */
-  hueBridge.addDevice("Chromance");
-  hueBridge.onSetState([](unsigned char /*id*/, bool state, unsigned char bri,
-                          short /*ct*/, unsigned int /*hue*/, unsigned char /*sat*/,
-                          char /*mode*/) {
-    xSemaphoreTake(gParamsMutex, portMAX_DELAY);
-
-    GlobalParameters.StableColorMode = state;        /* ON → nightlight, OFF → ripples */
-    GlobalParameters.MasterFireRippleEnabled = false;
-    pendingKillProfileIndex = -2;                    /* kill all in-flight ripples */
-
-    if (bri > 0) {
-      GlobalParameters.Brightness = bri;
-      for (int s = 0; s < NUMBER_OF_STRIPS; s++)
-        strips[s].setBrightness(bri);
-    }
-
-    EEPROM_MarkDirty();
-    xSemaphoreGive(gParamsMutex);
-
-    udp_printf("[Alexa] state=%s bri=%d\n", state ? "ON" : "OFF", bri);
-  });
-  hueBridge.start(server);
 }
 
 static void setupWifiManager(void)
@@ -206,8 +170,6 @@ void WiFi_Utilities_init(void)
   setupOTA();
   Serial.printf("[T+%lums] OTA done\n", millis());
 
-  AlexaControl_Init();
-  Serial.printf("[T+%lums] fauxmoESP started\n", millis());
 
   Serial.printf("[T+%lums] mDNS setup start\n", millis());
   if (!MDNS.begin("hexagono"))
@@ -224,8 +186,6 @@ void WiFi_Utilities_init(void)
 void WiFi_Utilities_loop(void)
 {
   ElegantOTA.loop();
-  AlexaControl_Handle();  /* no-op stub */
-  hueBridge.handle();     /* polls UPnP SSDP socket for M-SEARCH packets */
 }
 
 /// UDP printf function (supports printf-style formatting)

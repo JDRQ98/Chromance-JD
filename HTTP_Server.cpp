@@ -6,7 +6,7 @@ using namespace std;
 #include "HTTP_Server.h"
 #include "MCAL/ripple.h"
 #include "MCAL/EEP.h"
-#include "Alexa/SimpleJson.h"
+#include "Utils/SimpleJson.h"
 #include "WiFi_utilities.h"
 
 unsigned long currentTime = 0;

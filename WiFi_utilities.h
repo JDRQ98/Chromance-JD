@@ -33,7 +33,7 @@ size_t udp_println(const char msg);
 size_t udp_println(int val);
 size_t udp_println(long val);
 
-// Route HueBridge debug output through UDP so it appears in UDP_Monitor.py
+// Route debug output through UDP so it appears in UDP_Monitor.py
 #define DEBUG_MSG_HUE(fmt, ...) { udp_printf(fmt, ## __VA_ARGS__); }
 
 #endif /*WIFI_UTILITIES_H*/

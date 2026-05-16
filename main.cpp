@@ -4,6 +4,12 @@
    I smooshed in the ESP32 BasicOTA sketch, too
 
    (C) Voidstar Lab 2021
+
+   Improved by JDSL jdsoftwarelabs.com 2026
+   - Added Stable Color mode with optional sequencer and fade transitions
+   - Added Home Assistant integration via ESPHome
+   - Added Web Server & HTTP API for full parameter control and profile management
+   - Added ElegantOTA for OTA updates via web browser
 */
 
 #include <Adafruit_NeoPixel.h>
@@ -16,6 +22,7 @@
 #include "MCAL/EEP.h"
 #include "Wifi_utilities.h"
 #include "StableColor.h"
+#include "HomeAssistant_Integration.h"
 
 #define NUMBER_OF_DIRECTIONS 6
 #define NUMBER_OF_STARTING_NODES 3
@@ -32,33 +39,35 @@ void setup()
   Serial.printf("[T+%lums] Serial started\n", millis());
 
   pinMode(LED, OUTPUT);
-  WiFi_Utilities_init();
-  Serial.printf("[T+%lums] WiFi_Utilities_init done\n", millis());
-
+  
   Strips_init();
   Serial.printf("[T+%lums] Strips_init done\n", millis());
-
+  
   Serial.printf("[T+%lums] EEPROM_Init start\n", millis());
   (void) EEPROM_Init();
   Serial.printf("[T+%lums] EEPROM_Init done\n", millis());
-
+  
   // Apply brightness from EEPROM (Strips_init runs before EEPROM_Init with default value)
   for (int i = 0; i < NUMBER_OF_STRIPS; i++) {
     strips[i].setBrightness(GlobalParameters.Brightness);
   }
-
+  
   // Reset sequencer timestamps so stale EEPROM values don't cause immediate switches
   GlobalParameters.SequencerLastSwitch_ms = millis();
   GlobalParameters.SCSeqLastSwitch_ms     = millis();
   // Reset runtime-only fade state
   GlobalParameters.SCSeqFadePhase         = 0;
   GlobalParameters.SCSeqFadeMultiplier    = 1.0f;
-
+  
   // Initialize period start times for all profiles
   for(int i = 0; i < NUMBER_OF_PROFILES; i++){
     GlobalParameters.RippleProfiles[i].PeriodStartTime_ms = millis();
     memset(GlobalParameters.RippleProfiles[i].EventFired, 0, sizeof(GlobalParameters.RippleProfiles[i].EventFired));
   }
+  
+  WiFi_Utilities_init();
+  HA_init();
+  Serial.printf("[T+%lums] WiFi_Utilities_init done\n", millis());
 
   udp_printf("GlobalParameters restored from EEPROM:");
   udp_printf("MasterFireRippleEnabled: %d", GlobalParameters.MasterFireRippleEnabled);
@@ -66,6 +75,7 @@ void setup()
   for(int i = 0; i < GlobalParameters.NumberOfActiveProfiles; i++){
     udp_printf(" -Profile %d Name: \"%s\"", i, GlobalParameters.RippleProfiles[i].ProfileName);
   }
+
 }
   
 void loop()
@@ -73,6 +83,7 @@ void loop()
   unsigned long currentTime_ms = millis();
 
   WiFi_Utilities_loop();
+  HA_loop();
   EEPROM_DebouncedSave(); // persist EEPROM if dirty and cooldown has elapsed
 
   if (!OTAinProgress)
